@@ -61,15 +61,16 @@ class Handler:
     async def handle_text_message(self, event: MessageEvent):
         text, deli = preprocess_input_text(event.message.text)
         if deli is None:
-            out_emoji = await query({"inputs": f"{self.INPUT_TASK_PREFIX+text}", "wait_for_model": True}, self.HF_API_HEADER, self.API_URL)
+            out_emoji = await query(self.INPUT_TASK_PREFIX+text, self.HF_API_HEADER, self.API_URL)
             output = text + out_emoji
         else:
             output_list = []
             for t in text:
-                out_emoji = await query({"inputs": f"{self.INPUT_TASK_PREFIX+t}"}, self.HF_API_HEADER, self.API_URL)
+                out_emoji = await query(self.INPUT_TASK_PREFIX+t, self.HF_API_HEADER, self.API_URL)
                 output_list.append(out_emoji)
             output = "".join([val for triple in zip(text, output_list, deli)
                              for val in triple] + text[len(deli):] + output_list[len(deli):] + deli[len(output_list):])
+
         await self.line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
@@ -78,13 +79,19 @@ class Handler:
         )
 
 
-async def query(payload, headers, url):
+async def query(input_text, headers, url):
+    payload = {
+        "inputs": input_text,
+        "wait_for_model": True,
+        "max_new_tokens": 5,
+    }
+
     async with session.post(url, headers=headers, json=payload) as response:
         resp = await response.json(encoding='utf-8')
-
     ret = resp[0]['generated_text']
-    rej_list = ["<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB2>",
-                "<0xF0><0x9F><0xA5><0xB2><0xF0><0x9F><0xA5><0xB2>"]
+
+    rej_list = {"<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB2>",
+                "<0xF0><0x9F><0xA5><0xB2><0xF0><0x9F><0xA5><0xB2>"}
     if ret in rej_list:
         ret = ""
     return ret
@@ -92,8 +99,7 @@ async def query(payload, headers, url):
 
 def preprocess_input_text(input_text):
     input_text = input_text.strip()
-    # input_text = re.sub(r'\s+', '', input_text)
-    # input_text = re.sub(r'[\u2000-\u200d\u202f\u205f\u3000]+', '', input_text)
+
     parts = re.split(r'(\s*[ ，。\n]\s*)', input_text)
     if len(parts) == 1:
         return parts[0], None
