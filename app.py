@@ -32,7 +32,8 @@ session: aiohttp.ClientSession = None
 class Handler:
     INPUT_TASK_PREFIX = "emoji: "
     API_URL = "https://api-inference.huggingface.co/models/liswei/EmojiLMSeq2SeqLoRA"
-    HF_API_HEADER = {"Authorization": f"Bearer {hf_api_token}"}
+    HF_API_HEADER = {
+        "Authorization": f"Bearer {hf_api_token}"}
 
     def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser):
         self.line_bot_api = line_bot_api
@@ -58,9 +59,17 @@ class Handler:
         return web.Response(text="OK\n")
 
     async def handle_text_message(self, event: MessageEvent):
-        input_text = preprocess_input_text(event.message.text)
-        output = await query({"inputs": f"{self.INPUT_TASK_PREFIX+input_text}"}, self.HF_API_HEADER, self.API_URL)
-        print(output)
+        text, deli = preprocess_input_text(event.message.text)
+        if deli is None:
+            out_emoji = await query({"inputs": f"{self.INPUT_TASK_PREFIX+text}", "wait_for_model": True}, self.HF_API_HEADER, self.API_URL)
+            output = text + out_emoji
+        else:
+            output_list = []
+            for t in text:
+                out_emoji = await query({"inputs": f"{self.INPUT_TASK_PREFIX+t}"}, self.HF_API_HEADER, self.API_URL)
+                output_list.append(out_emoji)
+            output = "".join([val for triple in zip(text, output_list, deli)
+                             for val in triple] + text[len(deli):] + output_list[len(deli):] + deli[len(output_list):])
         await self.line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
@@ -74,14 +83,27 @@ async def query(payload, headers, url):
         resp = await response.json(encoding='utf-8')
 
     ret = resp[0]['generated_text']
+    rej_list = ["<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB2>",
+                "<0xF0><0x9F><0xA5><0xB2><0xF0><0x9F><0xA5><0xB2>"]
+    if ret in rej_list:
+        ret = ""
     return ret
 
 
 def preprocess_input_text(input_text):
     input_text = input_text.strip()
-    input_text = re.sub(r'\s+', '', input_text)
-    input_text = re.sub(r'[^\x20-\x7E]', '', input_text)
-    return input_text
+    # input_text = re.sub(r'\s+', '', input_text)
+    # input_text = re.sub(r'[\u2000-\u200d\u202f\u205f\u3000]+', '', input_text)
+    parts = re.split(r'(\s*[ ，。\n]\s*)', input_text)
+    if len(parts) == 1:
+        return parts[0], None
+
+    while parts[0] in ['', ' ', '\n', '，', '。']:
+        parts = parts[1:]
+
+    text_list = parts[::2]
+    delimiter_list = parts[1::2]
+    return text_list, delimiter_list
 
 
 def InitLogger(rootLogger, log_path: str) -> logging.Logger:
