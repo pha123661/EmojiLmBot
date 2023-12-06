@@ -26,7 +26,7 @@ channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 hf_api_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 
 logger = logging.getLogger()
-session = aiohttp.ClientSession()
+session: aiohttp.ClientSession = None
 
 
 class Handler:
@@ -102,6 +102,8 @@ def InitLogger(rootLogger, log_path: str) -> logging.Logger:
 
 
 async def main(args):
+    global session
+    session = aiohttp.ClientSession()
     configuration = Configuration(access_token=channel_access_token)
     async_api_client = AsyncApiClient(configuration)
 
@@ -117,9 +119,16 @@ async def main(args):
     site = TCPSite(runner=runner, port=args.port)
     await site.start()
 
-    # sleep forever
-    while True:
-        await asyncio.sleep(3600)
+    logger.info(f"Server started at port {args.port}")
+
+    try:
+        while True:
+            await asyncio.sleep(3600)  # Keep the server running
+    finally:
+        await site.stop()
+        await runner.cleanup()
+        await async_api_client.close()
+        await session.close()
 
 
 def parse_args():
@@ -131,4 +140,7 @@ def parse_args():
 if __name__ == "__main__":
     InitLogger(logger, 'app.log')
     args = parse_args()
-    asyncio.run(main(args))
+    try:
+        asyncio.run(main(args))
+    except KeyboardInterrupt:
+        logger.info("Server stopped.")
