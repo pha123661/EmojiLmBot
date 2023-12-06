@@ -4,6 +4,7 @@ import asyncio
 import logging
 import os
 import re
+import sys
 from argparse import ArgumentParser
 
 import aiohttp
@@ -23,6 +24,8 @@ load_dotenv()
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 hf_api_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+
+logger = logging.getLogger()
 
 
 class Handler:
@@ -81,7 +84,24 @@ def preprocess_input_text(input_text):
     return input_text
 
 
-async def main(port=8000):
+def InitLogger(rootLogger, log_path: str) -> logging.Logger:
+    logFormatter = logging.Formatter(
+        "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
+
+    rootLogger.setLevel(logging.INFO)
+
+    fileHandler = logging.FileHandler(log_path, encoding='utf8')
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+
+    consoleHandler = logging.StreamHandler(sys.stdout)
+    consoleHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(consoleHandler)
+
+    return rootLogger
+
+
+async def main(args):
     configuration = Configuration(access_token=channel_access_token)
     async_api_client = AsyncApiClient(configuration)
 
@@ -94,7 +114,7 @@ async def main(port=8000):
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = TCPSite(runner=runner, port=port)
+    site = TCPSite(runner=runner, port=args.port)
     await site.start()
 
     # sleep forever
@@ -102,14 +122,13 @@ async def main(port=8000):
         await asyncio.sleep(3600)
 
 
+def parse_args():
+    parser = ArgumentParser()
+    parser.add_argument('--port', type=int, default=8000)
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
-
-    arg_parser = ArgumentParser(
-        usage='Usage: python ' + __file__ + ' [--port <port>] [--help]'
-    )
-    arg_parser.add_argument('-p', '--port', type=int,
-                            default=8000, help='port')
-    args = arg_parser.parse_args()
-
-    asyncio.run(main(args.port))
+    InitLogger(logger, 'app.log')
+    args = parse_args()
+    asyncio.run(main(args))
