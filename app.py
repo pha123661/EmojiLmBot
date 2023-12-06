@@ -23,7 +23,7 @@ load_dotenv()
 
 channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
 channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
-hf_api_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+hf_api_token = os.getenv('HF_API_TOKEN', None)
 
 logger = logging.getLogger()
 session: aiohttp.ClientSession = None
