@@ -26,6 +26,7 @@ channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 hf_api_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 
 logger = logging.getLogger()
+session = aiohttp.ClientSession()
 
 
 class Handler:
@@ -69,9 +70,8 @@ class Handler:
 
 
 async def query(payload, headers, url):
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.post(url, json=payload) as response:
-            resp = await response.json(encoding='utf-8')
+    async with session.post(url, headers=headers, json=payload) as response:
+        resp = await response.json(encoding='utf-8')
 
     ret = resp[0]['generated_text']
     return ret
