@@ -50,24 +50,29 @@ class Handler:
             return web.Response(status=400, text='Invalid signature')
 
         for event in events:
+            if isinstance(event, JoinEvent):
+                await self.send_help_message(event)
             if isinstance(event, LeaveEvent):
-                pass
+                logger.warning('幹被踢了啦')
             if isinstance(event, UnfollowEvent):
-                pass
+                logger.warning('幹被封鎖了啦')
             if isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
                 await self.handle_text_message(event)
 
         return web.Response(text="OK\n")
 
+    async def send_help_message(self, event: MessageEvent):
+        await self.line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[TextMessage(
+                    text="在訊息前或後+上 ＠哈哈狗 就幫你+emoji (但標不到是正常)")]
+            )
+        )
+
     async def handle_text_message(self, event: MessageEvent):
         if event.message.text == "哈哈狗幫幫我":
-            await self.line_bot_api.reply_message(
-                ReplyMessageRequest(
-                    reply_token=event.reply_token,
-                    messages=[TextMessage(
-                        text="在訊息前或後+上 ＠哈哈狗 就幫你+emoji(但標不到是正常)")]
-                )
-            )
+            self.send_help_message(event)
             return
         input_text = event.message.text.strip()
         if input_text.startswith(f"@{self.BOT_NAME}") or input_text.endswith(f"@{self.BOT_NAME}"):
