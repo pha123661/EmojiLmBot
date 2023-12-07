@@ -25,13 +25,13 @@ from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
 
 load_dotenv()
 
-channel_secret = os.getenv('LINE_CHANNEL_SECRET', None)
-channel_access_token = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
-hf_api_token = os.getenv('HF_API_TOKEN', None)
+CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
+CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+HF_API_TOKEN_LIST = os.getenv('HF_API_TOKEN_LIST', None)
+HF_API_HEADER: dict = None
 API_URL = "https://api-inference.huggingface.co/models/liswei/EmojiLMSeq2SeqLoRA"
-HF_API_HEADER = {"Authorization": f"Bearer {hf_api_token}"}
 
-if channel_secret is None or channel_access_token is None or hf_api_token is None:
+if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or HF_API_TOKEN_LIST is None:
     print(
         "Please set LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN and HF_API_TOKEN environment variables.")
     sys.exit(1)
@@ -129,6 +129,7 @@ async def generate_output(prefix, input_text):
     for text in text_list:
         out_emoji = await query(prefix + text)
         if out_emoji.startswith("[!Broke]"):
+            query.cache_invalidate(prefix + text)
             return out_emoji[len("[!Broke]"):]
         out_emoji = post_process_output(out_emoji)
         out_emoji_list.append(out_emoji)
@@ -165,6 +166,7 @@ async def query(input_text):
         ret = resp[0]['generated_text']
     except KeyError:
         logger.error(f"Error: {resp}")
+        set_hf_api_token()
         return "[!Broke]幹太多人用壞掉了 可能下個小時才會好"
 
     logger.info(f"Input: `{input_text}` Output: `{ret}`")
@@ -193,13 +195,20 @@ def post_process_output(output_emoji: str):
 
 
 async def main(args):
+    InitLogger(logger, 'app.log')
+
+    global HF_API_TOKEN_LIST
+    HF_API_TOKEN_LIST = HF_API_TOKEN_LIST.split(' ')
+    set_hf_api_token(0)
+
     global session
     session = aiohttp.ClientSession()
-    configuration = Configuration(access_token=channel_access_token)
+
+    configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
     async_api_client = AsyncApiClient(configuration)
 
     line_bot_api = AsyncMessagingApi(async_api_client)
-    parser = WebhookParser(channel_secret)
+    parser = WebhookParser(CHANNEL_SECRET)
     handler = Handler(line_bot_api, parser)
 
     app = web.Application()
@@ -245,8 +254,18 @@ def parse_args():
     return parser.parse_args()
 
 
+def set_hf_api_token(idx=None):
+    if idx is None:
+        # Randomly choose one token
+        import random
+        idx = random.randint(0, len(HF_API_TOKEN_LIST)-1)
+
+    logger.info(f"Use HF API token {idx}")
+    global HF_API_HEADER
+    HF_API_HEADER = {"Authorization": f"Bearer {HF_API_TOKEN_LIST[idx]}"}
+
+
 if __name__ == "__main__":
-    InitLogger(logger, 'app.log')
     args = parse_args()
     try:
         asyncio.run(main(args))
