@@ -2,3 +2,4 @@ line-bot-sdk
 aiohttp
 aiodns
 python-dotenv
+async_lru
