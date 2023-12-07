@@ -75,7 +75,7 @@ class Handler:
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TextMessage(
-                    text=f"在訊息前或後+上 ＠{self.BOT_NAME} 就幫你+emoji (但標不到是正常)")]
+                    text=f"在訊息前或後+上 @{self.BOT_NAME} 就幫你+emoji (但標不到是正常)")]
             )
         )
 
