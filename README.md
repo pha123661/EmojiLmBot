@@ -18,3 +18,8 @@ Stop:
 ```bash
 docker stop emoji-lm-line-bot
 ```
+
+Remove:
+```bash
+docker rm emoji-lm-line-bot
+```
