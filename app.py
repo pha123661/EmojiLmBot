@@ -235,7 +235,7 @@ def InitLogger(rootLogger, log_path: str) -> logging.Logger:
     logFormatter = logging.Formatter(
         "[!log] %(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
 
-    rootLogger.setLevel(logging.DEBUG)
+    rootLogger.setLevel(logging.INFO)
 
     fileHandler = logging.FileHandler(log_path, encoding='utf8')
     fileHandler.setFormatter(logFormatter)
