@@ -63,13 +63,13 @@ class Handler:
             if isinstance(event, JoinEvent):
                 logger.info(f'加入群組 {event.source.group_id}')
                 await self.send_help_message(event)
-            if isinstance(event, FollowEvent):
+            elif isinstance(event, FollowEvent):
                 logger.info(f'加入好友 {event.source.user_id}')
-            if isinstance(event, LeaveEvent):
+            elif isinstance(event, LeaveEvent):
                 logger.warning(f'幹被踢了啦 {event.source.group_id}')
-            if isinstance(event, UnfollowEvent):
+            elif isinstance(event, UnfollowEvent):
                 logger.warning(f'幹被封鎖了啦 {event.source.user_id}')
-            if isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
+            elif isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
                 await self.handle_text_message(event)
 
         return web.Response(text="OK\n")
