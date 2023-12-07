@@ -68,8 +68,8 @@ class Handler:
                         text="在訊息前或後+上 ＠哈哈狗 就幫你+emoji(但標不到是正常)")]
                 )
             )
+            return
         input_text = event.message.text.strip()
-        print(input_text)
         if input_text.startswith(f"@{self.BOT_NAME}") or input_text.endswith(f"@{self.BOT_NAME}"):
             input_text = input_text.replace(f"@{self.BOT_NAME}", "").strip()
             text, deli = preprocess_input_text(input_text)
@@ -101,7 +101,6 @@ async def query(input_text, headers, url):
 
     async with session.post(url, headers=headers, json=payload) as response:
         resp = await response.json(encoding='utf-8')
-    print(resp)
     ret = resp[0]['generated_text']
 
     rej_list = {"<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB2>",
