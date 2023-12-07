@@ -82,7 +82,7 @@ class Handler:
 async def query(input_text, headers, url):
     payload = {
         "inputs": input_text,
-        "wait_for_model": True,
+        "options": {"wait_for_model": True},
         "max_new_tokens": 5,
     }
 
