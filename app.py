@@ -19,8 +19,9 @@ from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
                                   Configuration, ReplyMessageRequest,
                                   TextMessage)
-from linebot.v3.webhooks import (JoinEvent, LeaveEvent, MessageEvent,
-                                 TextMessageContent, UnfollowEvent)
+from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
+                                 MessageEvent, TextMessageContent,
+                                 UnfollowEvent)
 
 load_dotenv()
 
@@ -55,12 +56,15 @@ class Handler:
         try:
             events = self.parser.parse(body, signature)
         except InvalidSignatureError:
+            logger.error("Invalid signature.")
             return web.Response(status=400, text='Invalid signature')
 
         for event in events:
             if isinstance(event, JoinEvent):
                 logger.info(f'加入群組 {event.source.group_id}')
                 await self.send_help_message(event)
+            if isinstance(event, FollowEvent):
+                logger.info(f'加入好友 {event.source.user_id}')
             if isinstance(event, LeaveEvent):
                 logger.warning(f'幹被踢了啦 {event.source.group_id}')
             if isinstance(event, UnfollowEvent):
@@ -136,6 +140,7 @@ async def generate_output(prefix, input_text):
 
 @alru_cache(maxsize=1024)
 async def query(input_text):
+    logger.debug(f"Query: {input_text}")
     payload = {
         "inputs": input_text,
         "options": {"wait_for_model": True},
