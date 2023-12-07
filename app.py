@@ -96,7 +96,7 @@ class Handler:
             return
 
         async with self.semaphore:
-            output = await generate_output(self.INPUT_TASK_PREFIX + input_text)
+            output = await generate_output(self.INPUT_TASK_PREFIX, input_text)
 
         await self.line_bot_api.reply_message(
             ReplyMessageRequest(
@@ -106,14 +106,15 @@ class Handler:
         )
 
 
-async def generate_output(input_text):
+async def generate_output(prefix, input_text):
     text_list, delimiter_list = preprocess_input_text(input_text)
 
     out_emoji_list = []
-    for t in text_list:
-        out_emoji = await query(+t)
+    for text in text_list:
+        out_emoji = await query(prefix + text)
         if out_emoji.startswith("[!Broke]"):
-            return out_emoji
+            return out_emoji[len("[!Broke]"):]
+        out_emoji = post_process_output(out_emoji)
         out_emoji_list.append(out_emoji)
 
     output_list = []
@@ -133,11 +134,6 @@ async def generate_output(input_text):
     return output
 
 
-rej_list = ["<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB9>", "<0xF0><0x9F><0xA5><0xB2>",
-            "<0xF0><0x9F><0xA6><0xB8><0xF0><0x9F><0xA6><0xB8>"]
-rej_pattern = re.compile("|".join(re.escape(rej) for rej in rej_list))
-
-
 @alru_cache(maxsize=1024)
 async def query(input_text):
     payload = {
@@ -154,8 +150,6 @@ async def query(input_text):
         logger.error(f"Error: {resp}")
         return "[!Broke]幹太多人用壞掉了 可能下個小時才會好"
 
-    ret = rej_pattern.sub("", ret)
-
     logger.info(f"Input: `{input_text}` Output: `{ret}`")
     return ret
 
@@ -168,6 +162,17 @@ def preprocess_input_text(input_text: str):
     text_list = parts[::2]
     delimiter_list = parts[1::2]
     return text_list, delimiter_list
+
+
+def post_process_output(output_emoji: str):
+    if re.match(r"<(.*?)>", output_emoji):
+        try:
+            code_points = re.findall(r"<(.*?)>", output_emoji)
+            output_emoji = bytes(int(code_unit, 16)
+                                 for code_unit in code_points).decode('utf-8')
+        except ValueError:
+            pass
+    return output_emoji
 
 
 async def main(args):
