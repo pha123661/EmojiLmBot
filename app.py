@@ -130,7 +130,7 @@ class Handler:
         )
 
 
-rej_list = ["<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB2>",
+rej_list = ["<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB9>", "<0xF0><0x9F><0xA5><0xB2>",
             "<0xF0><0x9F><0xA6><0xB8><0xF0><0x9F><0xA6><0xB8>"]
 rej_pattern = re.compile("|".join(re.escape(rej) for rej in rej_list))
 
@@ -159,6 +159,7 @@ async def query(input_text):
 
 def preprocess_input_text(input_text: str):
     input_text = input_text.strip(" ，。,.\n")
+    input_text = re.sub(r"https?://\S+|www\.\S+", "", input_text)
     parts = re.split(r'(\s*[ ，。\n]\s*)', input_text)
 
     text_list = parts[::2]
