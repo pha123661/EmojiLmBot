@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from argparse import ArgumentParser
+from asyncio import Semaphore
 
 import aiohttp
 from aiohttp import web
@@ -42,9 +43,10 @@ class Handler:
     INPUT_TASK_PREFIX = "emoji: "
     BOT_NAME = "哈哈狗"
 
-    def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser):
+    def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser, workers: int = 10):
         self.line_bot_api = line_bot_api
         self.parser = parser
+        self.semaphore = Semaphore(workers)
 
     async def __call__(self, request):
         signature = request.headers['X-Line-Signature']
@@ -93,34 +95,8 @@ class Handler:
         else:
             return
 
-        text_list, delimiter_list = preprocess_input_text(input_text)
-
-        out_emoji_list = []
-        for t in text_list:
-            out_emoji = await query(self.INPUT_TASK_PREFIX+t)
-            if out_emoji.startswith("[!Broke]"):
-                await self.line_bot_api.reply_message(
-                    ReplyMessageRequest(
-                        reply_token=event.reply_token,
-                        messages=[TextMessage(text=out_emoji)]
-                    )
-                )
-                return
-            out_emoji_list.append(out_emoji)
-
-        output_list = []
-        output_list = list(itertools.chain.from_iterable(
-            zip(text_list, out_emoji_list, delimiter_list)))
-        min_length = min(len(text_list), len(
-            out_emoji_list), len(delimiter_list))
-        if len(text_list) > min_length:
-            output_list.extend(text_list[min_length:])
-        if len(out_emoji_list) > min_length:
-            output_list.extend(out_emoji_list[min_length:])
-        if len(delimiter_list) > min_length:
-            output_list.extend(delimiter_list[min_length:])
-
-        output = "".join(output_list)
+        async with self.semaphore:
+            output = await generate_output(self.INPUT_TASK_PREFIX + input_text)
 
         await self.line_bot_api.reply_message(
             ReplyMessageRequest(
@@ -128,6 +104,33 @@ class Handler:
                 messages=[TextMessage(text=output)]
             )
         )
+
+
+async def generate_output(input_text):
+    text_list, delimiter_list = preprocess_input_text(input_text)
+
+    out_emoji_list = []
+    for t in text_list:
+        out_emoji = await query(+t)
+        if out_emoji.startswith("[!Broke]"):
+            return out_emoji
+        out_emoji_list.append(out_emoji)
+
+    output_list = []
+    output_list = list(itertools.chain.from_iterable(
+        zip(text_list, out_emoji_list, delimiter_list)))
+    min_length = min(len(text_list), len(
+        out_emoji_list), len(delimiter_list))
+    if len(text_list) > min_length:
+        output_list.extend(text_list[min_length:])
+    if len(out_emoji_list) > min_length:
+        output_list.extend(out_emoji_list[min_length:])
+    if len(delimiter_list) > min_length:
+        output_list.extend(delimiter_list[min_length:])
+
+    output = "".join(output_list)
+
+    return output
 
 
 rej_list = ["<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB9>", "<0xF0><0x9F><0xA5><0xB2>",
