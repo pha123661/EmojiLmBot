@@ -100,6 +100,7 @@ class Handler:
             return
 
         async with self.semaphore:
+            await asyncio.sleep(0.1)
             output = await generate_output(self.INPUT_TASK_PREFIX, input_text)
 
         await self.line_bot_api.reply_message(
@@ -111,7 +112,18 @@ class Handler:
 
 
 async def generate_output(prefix, input_text):
+    sentences_limit = 35
+
     text_list, delimiter_list = preprocess_input_text(input_text)
+    logger.debug(f"Text list length: {len(text_list)}")
+
+    if len(text_list) > sentences_limit:
+        logger.warning(f"Input text too long: {len(text_list)}")
+        last_sentence_within_limit = text_list[sentences_limit-1]
+        if len(last_sentence_within_limit) >= 5:
+            last_sentence_within_limit = '...' + \
+                last_sentence_within_limit[-5:]
+        return f"太長了啦❗️ 你輸入了{len(text_list)}句 目前限制{sentences_limit}句話 大概到這邊而已：「{last_sentence_within_limit}」"
 
     out_emoji_list = []
     for text in text_list:
