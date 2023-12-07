@@ -34,6 +34,7 @@ class Handler:
     API_URL = "https://api-inference.huggingface.co/models/liswei/EmojiLMSeq2SeqLoRA"
     HF_API_HEADER = {
         "Authorization": f"Bearer {hf_api_token}"}
+    BOT_NAME = "哈哈狗"
 
     def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser):
         self.line_bot_api = line_bot_api
@@ -59,24 +60,36 @@ class Handler:
         return web.Response(text="OK\n")
 
     async def handle_text_message(self, event: MessageEvent):
-        text, deli = preprocess_input_text(event.message.text)
-        if deli is None:
-            out_emoji = await query(self.INPUT_TASK_PREFIX+text, self.HF_API_HEADER, self.API_URL)
-            output = text + out_emoji
-        else:
-            output_list = []
-            for t in text:
-                out_emoji = await query(self.INPUT_TASK_PREFIX+t, self.HF_API_HEADER, self.API_URL)
-                output_list.append(out_emoji)
-            output = "".join([val for triple in zip(text, output_list, deli)
-                             for val in triple] + text[len(deli):] + output_list[len(deli):] + deli[len(output_list):])
-
-        await self.line_bot_api.reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=output)]
+        if event.message.text == "哈哈狗幫幫我":
+            await self.line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(
+                        text="在訊息前或後+上 ＠哈哈狗 就幫你+emoji(但標不到是正常)")]
+                )
             )
-        )
+        input_text = event.message.text.strip()
+        print(input_text)
+        if input_text.startswith(f"@{self.BOT_NAME}") or input_text.endswith(f"@{self.BOT_NAME}"):
+            input_text = input_text.replace(f"@{self.BOT_NAME}", "").strip()
+            text, deli = preprocess_input_text(input_text)
+            if deli is None:
+                out_emoji = await query(self.INPUT_TASK_PREFIX+text, self.HF_API_HEADER, self.API_URL)
+                output = text + out_emoji
+            else:
+                output_list = []
+                for t in text:
+                    out_emoji = await query(self.INPUT_TASK_PREFIX+t, self.HF_API_HEADER, self.API_URL)
+                    output_list.append(out_emoji)
+                output = "".join([val for triple in zip(text, output_list, deli)
+                                  for val in triple] + text[len(deli):] + output_list[len(deli):] + deli[len(output_list):])
+
+            await self.line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[TextMessage(text=output)]
+                )
+            )
 
 
 async def query(input_text, headers, url):
@@ -88,6 +101,7 @@ async def query(input_text, headers, url):
 
     async with session.post(url, headers=headers, json=payload) as response:
         resp = await response.json(encoding='utf-8')
+    print(resp)
     ret = resp[0]['generated_text']
 
     rej_list = {"<0xF0><0x9F><0xA7><0xA7>", "<0xF0><0x9F><0xA5><0xB2>",
