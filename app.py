@@ -66,13 +66,13 @@ class Handler:
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TextMessage(
-                    text="在訊息前或後+上 ＠哈哈狗 就幫你+emoji (但標不到是正常)")]
+                    text=f"在訊息前或後+上 ＠{self.BOT_NAME} 就幫你+emoji (但標不到是正常)")]
             )
         )
 
     async def handle_text_message(self, event: MessageEvent):
-        if event.message.text == "哈哈狗幫幫我":
-            self.send_help_message(event)
+        if event.message.text == f"{self.BOT_NAME}幫幫我":
+            await self.send_help_message(event)
             return
         input_text = event.message.text.strip()
         if input_text.startswith(f"@{self.BOT_NAME}") or input_text.endswith(f"@{self.BOT_NAME}"):
