@@ -131,7 +131,6 @@ async def generate_output(prefix, input_text):
         if out_emoji.startswith("[!Broke]"):
             query.cache_invalidate(prefix + text)
             return out_emoji[len("[!Broke]"):]
-        out_emoji = post_process_output(out_emoji)
         out_emoji_list.append(out_emoji)
 
     output_list = []
@@ -169,6 +168,7 @@ async def query(input_text):
         set_hf_api_token()
         return "[!Broke]幹太多人用壞掉了 可能下個小時才會好"
 
+    ret = post_process_output(ret)
     logger.info(f"Input: `{input_text}` Output: `{ret}`")
     return ret
 
