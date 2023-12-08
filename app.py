@@ -79,7 +79,7 @@ class Handler:
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TextMessage(
-                    text=f"在訊息前或後+上 @{self.BOT_NAME} 就幫你+emoji (但標不到是正常)")]
+                    text=f"在訊息前或後+上 @{self.BOT_NAME} 就會幫你+emoji\nEX: @哈哈狗 那你很厲害誒")]
             )
         )
 
@@ -92,9 +92,9 @@ class Handler:
             await self.send_help_message(event)
             return
 
-        if input_text.startswith(f"@{self.BOT_NAME}"):
+        if input_text.startswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
             input_text = input_text[len(f"@{self.BOT_NAME}"):]
-        elif input_text.endswith(f"@{self.BOT_NAME}"):
+        elif input_text.endswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
             input_text = input_text[:-len(f"@{self.BOT_NAME}")]
         else:
             return
