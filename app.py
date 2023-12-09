@@ -156,7 +156,10 @@ async def query(input_text):
     payload = {
         "inputs": input_text,
         "options": {"wait_for_model": True},
-        "max_new_tokens": 5,
+        "parameters": {
+            "max_new_tokens": 5,
+            "do_sample": False,
+        },
     }
 
     async with session.post(API_URL, headers=HF_API_HEADER, json=payload) as response:
