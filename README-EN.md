@@ -1,17 +1,22 @@
 # Emoji LM Bot
 
-[![en](https://img.shields.io/badge/lang-en-blue.svg)](./README-EN.md)
+[![docker](https://badgen.net/badge/icon/docker?icon=docker&label=)](https://hub.docker.com/r/pha123661/emoji-lm-line-bot)
+[![en](https://img.shields.io/badge/lang-en-orange.svg)](./README-EN.md)
 [![zh-tw](https://img.shields.io/badge/lang-zh--tw-yellow.svg)](./README.md)
 
 This is a bot that uses a language model to generate emojis based on a given text or paragraph.
 
 ## Usage
 
+Example:
+> User prompt：@哈哈狗 I love you\
+> 哈哈狗回覆：I😎😎 love🥰🥰 you😎😎
+
 1. Add the bot as a friend on LINE: [@255eanep](https://lin.ee/teUKO7u)\
     ![QR Code](./qr-code.png)
 2. Send a text or paragraph to the bot, with prefix or suffix `@哈哈狗`.\
-   EX: "@哈哈狗 我愛你" or "我愛你 @哈哈狗"
-
+   EX: "@哈哈狗 I love you" or "I love you @哈哈狗"
+3. Add 哈哈狗 into groups if you want.
 
 ## Deploy this bot on your own server
 

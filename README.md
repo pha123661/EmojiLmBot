@@ -1,20 +1,22 @@
 # 哈哈狗
 
-[![en](https://img.shields.io/badge/lang-en-blue.svg)](./README-EN.md)
+[![docker](https://badgen.net/badge/icon/docker?icon=docker&label=)](https://hub.docker.com/r/pha123661/emoji-lm-line-bot)
+[![en](https://img.shields.io/badge/lang-en-orange.svg)](./README-EN.md)
 [![zh-tw](https://img.shields.io/badge/lang-zh--tw-yellow.svg)](./README.md)
 
 這是一個根據給定文字或段落，生成表情符號的機器人。
+
+## 使用方法
 
 範例：
 > 使用者輸入：@哈哈狗 那你很厲害誒\
 > 哈哈狗回覆：那你很厲害誒😎😎😎
 
-## 使用方法
-
 1. 在 LINE 上加哈哈狗好友：[@255eanep](https://lin.ee/teUKO7u)\
     ![QR Code](./qr-code.png)
 2. 向哈哈狗傳送帶有前綴或後綴 `@哈哈狗` 的文字。\
    例如： "@哈哈狗 我愛你" 或 "我愛你 @哈哈狗"
+3. 哈哈狗也可以加入群組使用！
 
 ## 在您自己的伺服器上運行哈哈狗
 
