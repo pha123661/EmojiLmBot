@@ -23,17 +23,27 @@
 - `LINE_CHANNEL_ACCESS_TOKEN`：LINE 頻道訪問令牌
 - `HF_API_TOKEN_LIST`：Hugging Face API 令牌列表，由空格分隔
 
-建立映像檔：
+### 建立映像檔
+
 ```bash
+git clone https://github.com/pha123661/EmojiLmBot.git
 docker build -t emoji-lm-line-bot .
 ```
 
-運行：
+或者，您可以直接從 Docker Hub 拉取映像檔：
+
+```bash
+docker pull pha123661/emoji-lm-line-bot
+```
+
+### 運行
+
 ```bash
 docker run -p 8000:8000 --env-file .env -d --rm --name emoji-lm-line-bot emoji-lm-line-bot
 ```
 
-停止：
+### 停止
+
 ```bash
 docker stop emoji-lm-line-bot
 # docker rm emoji-lm-line-bot

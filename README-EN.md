@@ -20,18 +20,28 @@ Configure the following environment variables or use a `.env` file:
 - `LINE_CHANNEL_ACCESS_TOKEN`: LINE channel access token
 - `HF_API_TOKEN_LIST`: Hugging Face API token list, separated by space
 
-Build:
+### Build
+
 ```bash
+git clone https://github.com/pha123661/EmojiLmBot.git
 docker build -t emoji-lm-line-bot .
 ```
 
-Run:
+Alternatively, you can pull the image directly from Docker Hub:
+
 ```bash
-docker run -p 8000:8000 -d --name emoji-lm-line-bot emoji-lm-line-bot
+docker pull pha123661/emoji-lm-line-bot
 ```
 
-Stop:
+### Run
+
+```bash
+docker run -p 8000:8000 --env-file .env -d --rm --name emoji-lm-line-bot emoji-lm-line-bot
+```
+
+### Stop
+
 ```bash
 docker stop emoji-lm-line-bot
-docker rm emoji-lm-line-bot
+# docker rm emoji-lm-line-bot
 ```
