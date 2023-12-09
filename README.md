@@ -11,9 +11,9 @@
 
 ## 使用方法
 
-1. 在 LINE 上添加機器人為好友：[@255eanep](https://lin.ee/teUKO7u)\
+1. 在 LINE 上加哈哈狗好友：[@255eanep](https://lin.ee/teUKO7u)\
     ![QR Code](./qr-code.png)
-2. 向機器人發送帶有前綴或後綴 `@哈哈狗` 的文字或段落。\
+2. 向哈哈狗傳送帶有前綴或後綴 `@哈哈狗` 的文字。\
    例如： "@哈哈狗 我愛你" 或 "我愛你 @哈哈狗"
 
 ## 在您自己的伺服器上運行哈哈狗
@@ -23,7 +23,7 @@
 - `LINE_CHANNEL_ACCESS_TOKEN`：LINE 頻道訪問令牌
 - `HF_API_TOKEN_LIST`：Hugging Face API 令牌列表，由空格分隔
 
-構建：
+建立映像檔：
 ```bash
 docker build -t emoji-lm-line-bot .
 ```
