@@ -30,11 +30,11 @@ docker build -t emoji-lm-line-bot .
 
 運行：
 ```bash
-docker run -p 8000:8000 -d --name emoji-lm-line-bot emoji-lm-line-bot
+docker run -p 8000:8000 --env-file .env -d --rm --name emoji-lm-line-bot emoji-lm-line-bot
 ```
 
 停止：
 ```bash
 docker stop emoji-lm-line-bot
-docker rm emoji-lm-line-bot
+# docker rm emoji-lm-line-bot
 ```

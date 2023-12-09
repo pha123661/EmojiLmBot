@@ -13,7 +13,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from async_lru import alru_cache
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from linebot.v3 import WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
@@ -23,7 +23,7 @@ from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
                                  MessageEvent, TextMessageContent,
                                  UnfollowEvent)
 
-load_dotenv()
+# load_dotenv()
 
 CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
 CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
