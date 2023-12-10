@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import sys
+import time
 from argparse import ArgumentParser
 from asyncio import Semaphore
 
@@ -13,7 +14,6 @@ import aiohttp
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from async_lru import alru_cache
-# from dotenv import load_dotenv
 from linebot.v3 import WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
@@ -22,8 +22,6 @@ from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
 from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
                                  MessageEvent, TextMessageContent,
                                  UnfollowEvent)
-
-# load_dotenv()
 
 CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
 CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
@@ -43,11 +41,37 @@ session: aiohttp.ClientSession = None
 class Handler:
     INPUT_TASK_PREFIX = "emoji: "
     BOT_NAME = "哈哈狗"
+    KEEP_ALIVE_STR = "👋"
 
-    def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser, workers: int = 10):
+    def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser, workers: int = 10, keep_alive_interval: int = 300):
+        '''
+        :param workers: Number of workers to limit the number of concurrent queries
+        :param keep_alive_interval: Interval to query the serverless API to keep it alive (seconds)
+        '''
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.semaphore = Semaphore(workers)
+
+        self.last_query_time = time.time()
+        self.last_query_time_lock = asyncio.Lock()
+        self.keep_alive_interval = keep_alive_interval
+        asyncio.create_task(self.keep_serverless_api_alive())
+
+    async def keep_serverless_api_alive(self):
+        await query(self.KEEP_ALIVE_STR)
+        query.cache_invalidate(self.KEEP_ALIVE_STR)
+
+        while True:
+            elapsed_time = time.time() - self.last_query_time
+            if elapsed_time >= self.keep_alive_interval:
+                await query(self.KEEP_ALIVE_STR)
+                query.cache_invalidate(self.KEEP_ALIVE_STR)
+                last_query_time = time.time()
+                async with self.last_query_time_lock:
+                    if last_query_time > self.last_query_time:
+                        self.last_query_time = last_query_time
+
+            await asyncio.sleep(30)
 
     async def __call__(self, request):
         signature = request.headers['X-Line-Signature']
@@ -102,6 +126,11 @@ class Handler:
         async with self.semaphore:
             await asyncio.sleep(0.1)
             output = await generate_output(self.INPUT_TASK_PREFIX, input_text)
+
+        last_query_time = time.time()
+        async with self.last_query_time_lock:
+            if last_query_time > self.last_query_time:
+                self.last_query_time = last_query_time
 
         await self.line_bot_api.reply_message(
             ReplyMessageRequest(
@@ -226,7 +255,7 @@ async def main(args):
 
     try:
         while True:
-            await asyncio.sleep(3600)  # Keep the server running
+            await asyncio.sleep(600)  # Keep the server running
     finally:
         await site.stop()
         await runner.cleanup()
