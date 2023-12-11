@@ -213,7 +213,7 @@ async def query(input_text):
 def preprocess_input_text(input_text: str):
     input_text = re.sub(r"https?://\S+|www\.\S+", "", input_text)
     input_text = input_text.strip(" ，。,.\n")
-    parts = re.split(r'(\s*[ ，。\n]\s*)', input_text)
+    parts = re.split(r'(\s*[ ，。？；,.\n]\s*)', input_text)
 
     text_list = parts[::2]
     delimiter_list = parts[1::2]
