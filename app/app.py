@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-
 import asyncio
 import itertools
 import logging
 import os
+import random
 import re
+import string
 import sys
 import time
 from argparse import ArgumentParser
@@ -58,20 +59,24 @@ class Handler:
         asyncio.create_task(self.keep_serverless_api_alive())
 
     async def keep_serverless_api_alive(self):
-        await query(self.KEEP_ALIVE_STR)
-        query.cache_invalidate(self.KEEP_ALIVE_STR)
+        async def ping_serverless_api():
+            random_str = ''.join(random.choices(
+                string.ascii_letters + string.digits, k=3))  # prevent huggingface cache
+            await query(self.KEEP_ALIVE_STR + random_str)
+            query.cache_invalidate(self.KEEP_ALIVE_STR + random_str)
+
+        await ping_serverless_api()
 
         while True:
             elapsed_time = time.time() - self.last_query_time
             if elapsed_time >= self.keep_alive_interval:
-                await query(self.KEEP_ALIVE_STR)
-                query.cache_invalidate(self.KEEP_ALIVE_STR)
+                await ping_serverless_api()
                 last_query_time = time.time()
                 async with self.last_query_time_lock:
                     if last_query_time > self.last_query_time:
                         self.last_query_time = last_query_time
 
-            await asyncio.sleep(30)
+            await asyncio.sleep(60)
 
     async def __call__(self, request):
         signature = request.headers['X-Line-Signature']
