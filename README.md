@@ -1,10 +1,8 @@
 # 哈哈狗
 
 [![docker](https://badgen.net/badge/icon/docker?icon=docker&label=)](https://hub.docker.com/r/pha123661/emoji-lm-line-bot)
-[![en](https://img.shields.io/badge/lang-en-orange.svg)](./README-EN.md)
-[![zh-tw](https://img.shields.io/badge/lang-zh--tw-yellow.svg)](./README.md)
 
-這是一個根據給定文字或段落，生成表情符號的機器人。
+[👉English README👈](./README-EN.md)
 
 ## 使用方法
 
@@ -18,7 +16,7 @@
    例如： "@哈哈狗 我愛你" 或 "我愛你 @哈哈狗"
 3. 哈哈狗也可以加入群組使用！
 
-## 在您自己的伺服器上運行哈哈狗
+## 在您自己的伺服器上運行哈哈狗！
 
 配置以下環境變量或使用 `.env` 文件：
 - `LINE_CHANNEL_SECRET`：LINE 頻道密鑰
@@ -41,7 +39,7 @@ docker pull pha123661/emoji-lm-line-bot
 ### 運行
 
 ```bash
-docker run -p 8000:8000 --env-file .env -d --rm --name emoji-lm-line-bot emoji-lm-line-bot
+docker run -p 8000:8000 --env-file .env -d --rm --name emoji-lm-line-bot pha123661/emoji-lm-line-bot
 ```
 
 ### 停止
