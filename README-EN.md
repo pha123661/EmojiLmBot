@@ -1,8 +1,8 @@
 # Emoji LM Bot
 
 [![docker](https://badgen.net/badge/icon/docker?icon=docker&label=)](https://hub.docker.com/r/pha123661/emoji-lm-line-bot)
-[![en](https://img.shields.io/badge/lang-en-orange.svg)](./README-EN.md)
-[![zh-tw](https://img.shields.io/badge/lang-zh--tw-yellow.svg)](./README.md)
+
+[👉中文版本👈](./README.md)
 
 This is a bot that uses a language model to generate emojis based on a given text or paragraph.
 
