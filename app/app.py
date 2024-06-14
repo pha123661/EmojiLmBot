@@ -8,10 +8,12 @@ import re
 import string
 import sys
 import time
+from datetime import datetime
 from argparse import ArgumentParser
 from asyncio import Semaphore
 
 import aiohttp
+import motor.motor_asyncio
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from async_lru import alru_cache
@@ -29,6 +31,8 @@ CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 HF_API_TOKEN_LIST = os.getenv('HF_API_TOKEN_LIST', None)
 HF_API_HEADER: dict = None
 API_URL = "https://api-inference.huggingface.co/models/liswei/EmojiLMSeq2SeqLoRA"
+
+MONGO_CLIENT_STRING = os.getenv('MONGO_CLIENT', None)
 
 if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or HF_API_TOKEN_LIST is None:
     print(
@@ -52,6 +56,15 @@ class Handler:
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.semaphore = Semaphore(workers)
+
+        self.datacol = motor.motor_asyncio.AsyncIOMotorClient(
+            MONGO_CLIENT_STRING)["data"]["data"]
+        self.usercol = motor.motor_asyncio.AsyncIOMotorClient(
+            MONGO_CLIENT_STRING)["analysis"]["user_status"]
+        self.groupcol = motor.motor_asyncio.AsyncIOMotorClient(
+            MONGO_CLIENT_STRING)["analysis"]["group_status"]
+        self.msgcol = motor.motor_asyncio.AsyncIOMotorClient(
+            MONGO_CLIENT_STRING)["analysis"]["emoji_status"]
 
         self.last_query_time = time.time()
         self.last_query_time_lock = asyncio.Lock()
@@ -92,16 +105,25 @@ class Handler:
             if isinstance(event, JoinEvent):
                 logger.info(f'加入群組 {event.source.group_id}')
                 await self.send_help_message(event)
+                await self.groupcol.find_one_and_update({"_id": event.source.group_id}, {"$set": {"leave": False}, "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}}, upsert=True)
             elif isinstance(event, FollowEvent):
                 logger.info(f'加入好友 {event.source.user_id}')
             elif isinstance(event, LeaveEvent):
                 logger.warning(f'幹被踢了啦 {event.source.group_id}')
+                await self.groupcol.find_one_and_update({"_id": event.source.group_id}, {"$set": {"leave": True}}, upsert=True)
             elif isinstance(event, UnfollowEvent):
                 logger.warning(f'幹被封鎖了啦 {event.source.user_id}')
+                await self.usercol.find_one_and_update({"_id": event.source.user_id}, {"$set": {"block": True, "last_block": datetime.fromtimestamp(event.timestamp/1000)}}, upsert=True)
             elif isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
                 await self.handle_text_message(event)
 
         return web.Response(text="OK\n")
+
+    async def update_emoji_count(self, emoji_list):
+        for emojis in emoji_list:
+            emojis = set(emojis)
+            for emoji in emojis:
+                await self.msgcol.find_one_and_update({"_id": emoji}, {"$inc": {"usage_count": 1}})
 
     async def send_help_message(self, event: MessageEvent):
         await self.line_bot_api.reply_message(
@@ -119,8 +141,15 @@ class Handler:
         if input_text == f"{self.BOT_NAME}幫幫我":
             logger.info(f"幫幫我 by {event.source.user_id}")
             await self.send_help_message(event)
+            await self.usercol.find_one_and_update(
+                {"_id": event.source.user_id},
+                {
+                    "$inc": {"help_count": 1},
+                    "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}
+                },
+                upsert=True
+            )
             return
-
         if input_text.startswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
             input_text = input_text[len(f"@{self.BOT_NAME}"):]
         elif input_text.endswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
@@ -130,7 +159,7 @@ class Handler:
 
         async with self.semaphore:
             await asyncio.sleep(0.1)
-            output = await generate_output(self.INPUT_TASK_PREFIX, input_text)
+            output, out_emoji_list = await generate_output(self.INPUT_TASK_PREFIX, input_text)
 
         last_query_time = time.time()
         async with self.last_query_time_lock:
@@ -143,6 +172,36 @@ class Handler:
                 messages=[TextMessage(text=output)]
             )
         )
+
+        document = {
+            "Input": input_text,
+            "Output": output,
+            "User_ID": event.source.user_id,
+            "Creat_Time": event.timestamp
+        }
+        await self.datacol.insert_one(document)
+
+        if event.source.type == "group":
+            await self.groupcol.find_one_and_update(
+                {"_id": event.source.group_id},
+                {
+                    "$inc": {"msg_count": 1},
+                    "$set": {"last_use": datetime.fromtimestamp(event.timestamp/1000)},
+                    "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}
+                },
+                upsert=True
+            )
+
+        await self.usercol.find_one_and_update(
+            {"_id": event.source.user_id},
+            {
+                "$inc": {"msg_count": 1},
+                "$set": {"last_use": datetime.fromtimestamp(event.timestamp/1000)},
+                "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}
+            },
+            upsert=True
+        )
+        await self.update_emoji_count(out_emoji_list)
 
 
 async def generate_output(prefix, input_text):
@@ -181,7 +240,7 @@ async def generate_output(prefix, input_text):
 
     output = "".join(output_list)
 
-    return output
+    return output, out_emoji_list
 
 
 @alru_cache(maxsize=1024)
