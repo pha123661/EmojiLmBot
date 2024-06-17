@@ -9,6 +9,7 @@ import string
 import sys
 import time
 from datetime import datetime
+from urllib.parse import parse_qsl
 from argparse import ArgumentParser
 from asyncio import Semaphore
 
@@ -17,15 +18,16 @@ import motor.motor_asyncio
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from async_lru import alru_cache
+from bson import ObjectId
 from linebot.v3 import WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
                                   Configuration, ReplyMessageRequest,
-                                  TextMessage)
+                                  TextMessage, PostbackAction, QuickReply, QuickReplyItem)
 from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
                                  MessageEvent, TextMessageContent,
-                                 UnfollowEvent)
-
+                                 UnfollowEvent, PostbackEvent)
+PostbackAction()
 CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
 CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 HF_API_TOKEN_LIST = os.getenv('HF_API_TOKEN_LIST', None)
@@ -65,6 +67,8 @@ class Handler:
             MONGO_CLIENT_STRING)["analysis"]["group_status"]
         self.msgcol = motor.motor_asyncio.AsyncIOMotorClient(
             MONGO_CLIENT_STRING)["analysis"]["emoji_status"]
+        self.fbcol = motor.motor_asyncio.AsyncIOMotorClient(
+            MONGO_CLIENT_STRING)["data"]["feedback"]
 
         self.last_query_time = time.time()
         self.last_query_time_lock = asyncio.Lock()
@@ -116,7 +120,8 @@ class Handler:
                 await self.usercol.find_one_and_update({"_id": event.source.user_id}, {"$set": {"block": True, "last_block": datetime.fromtimestamp(event.timestamp/1000)}}, upsert=True)
             elif isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
                 await self.handle_text_message(event)
-
+            elif isinstance(event, PostbackEvent):
+                await self.handle_post_back(event)
         return web.Response(text="OK\n")
 
     async def update_emoji_count(self, emoji_list):
@@ -166,13 +171,6 @@ class Handler:
             if last_query_time > self.last_query_time:
                 self.last_query_time = last_query_time
 
-        await self.line_bot_api.reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[TextMessage(text=output)]
-            )
-        )
-
         document = {
             "Input": input_text,
             "Output": output,
@@ -180,6 +178,41 @@ class Handler:
             "Create_Time": datetime.fromtimestamp(event.timestamp/1000)
         }
         await self.datacol.insert_one(document)
+
+        feedback = await self.fbcol.insert_one(document)
+        feedback_id = feedback.inserted_id
+        await self.line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[
+                    TextMessage(text=output,
+                                quickReply=QuickReply.from_dict(
+                                    {
+                                        "items": [
+                                            QuickReplyItem.from_dict({
+                                                "type": "action",
+                                                "action": {
+                                                    "type": "postback",
+                                                    "label": "讚啦😎",
+                                                    "data": f"action=like&feedback_id={feedback_id}",
+                                                    "displayText": "讚啦😎",
+                                                }
+                                            }),
+                                            QuickReplyItem.from_dict({
+                                                "type": "action",
+                                                "action": {
+                                                    "type": "postback",
+                                                    "label": "爛啦🥲",
+                                                    "data": f"action=dislike&feedback_id={feedback_id}",
+                                                    "displayText": "爛啦🥲`",
+                                                }
+                                            }),
+                                        ]
+                                    })
+                                )
+                ]
+            )
+        )
 
         if event.source.type == "group":
             await self.groupcol.find_one_and_update(
@@ -202,6 +235,28 @@ class Handler:
             upsert=True
         )
         await self.update_emoji_count(out_emoji_list)
+
+    async def handle_post_back(self, event: PostbackEvent):
+        backdata = dict(parse_qsl(event.postback.data))
+        if backdata.keys() != {'action', 'feedback_id'}:
+            raise ValueError("Invalid quickreply!")
+        if backdata['action'] == "dislike":
+            preference_value = -1
+        elif backdata['action'] == "like":
+            preference_value = 1
+        else:
+            raise ValueError("Invalid quickreply!")
+
+        feedback_id = ObjectId(backdata["feedback_id"])
+        await self.fbcol.find_one_and_update({"_id": feedback_id}, {"$set": {"preference": preference_value}})
+        await self.line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[
+                    TextMessage(text="感謝回饋🐶")
+                ]
+            )
+        )
 
 
 async def generate_output(prefix, input_text):
