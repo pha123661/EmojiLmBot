@@ -350,7 +350,7 @@ async def main(args):
 
     global HF_API_TOKEN_LIST
     HF_API_TOKEN_LIST = HF_API_TOKEN_LIST.split(' ')
-    set_hf_api_token(0)
+    set_hf_api_token()
 
     global session
     session = aiohttp.ClientSession()
@@ -408,7 +408,6 @@ def parse_args():
 def set_hf_api_token(idx=None):
     if idx is None:
         # Randomly choose one token
-        import random
         idx = random.randint(0, len(HF_API_TOKEN_LIST)-1)
 
     logger.info(f"Use HF API token {idx}")
