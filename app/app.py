@@ -50,7 +50,7 @@ class Handler:
     BOT_NAME = "哈哈狗"
     KEEP_ALIVE_STR = "👋"
 
-    def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser, workers: int = 10, keep_alive_interval: int = 300):
+    def __init__(self, line_bot_api: AsyncMessagingApi, parser: WebhookParser, workers: int = 10, keep_alive_interval: int = 300, debug: bool = False):
         '''
         :param workers: Number of workers to limit the number of concurrent queries
         :param keep_alive_interval: Interval to query the serverless API to keep it alive (seconds)
@@ -58,17 +58,29 @@ class Handler:
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.semaphore = Semaphore(workers)
-
-        self.datacol = motor.motor_asyncio.AsyncIOMotorClient(
-            MONGO_CLIENT_STRING)["data"]["data"]
-        self.usercol = motor.motor_asyncio.AsyncIOMotorClient(
-            MONGO_CLIENT_STRING)["analysis"]["user_status"]
-        self.groupcol = motor.motor_asyncio.AsyncIOMotorClient(
-            MONGO_CLIENT_STRING)["analysis"]["group_status"]
-        self.msgcol = motor.motor_asyncio.AsyncIOMotorClient(
-            MONGO_CLIENT_STRING)["analysis"]["emoji_status"]
-        self.fbcol = motor.motor_asyncio.AsyncIOMotorClient(
-            MONGO_CLIENT_STRING)["data"]["feedback"]
+        
+        if debug:
+            self.datacol = motor.motor_asyncio.AsyncIOMotorClient(
+            MONGO_CLIENT_STRING)["data_debug"]["data"]
+            self.usercol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["analysis_debug"]["user_status"]
+            self.groupcol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["analysis_debug"]["group_status"]
+            self.msgcol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["analysis_debug"]["emoji_status"]
+            self.fbcol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["data_debug"]["feedback"]
+        else:
+            self.datacol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["data"]["data"]
+            self.usercol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["analysis"]["user_status"]
+            self.groupcol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["analysis"]["group_status"]
+            self.msgcol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["analysis"]["emoji_status"]
+            self.fbcol = motor.motor_asyncio.AsyncIOMotorClient(
+                MONGO_CLIENT_STRING)["data"]["feedback"]
 
         self.last_query_time = time.time()
         self.last_query_time_lock = asyncio.Lock()
@@ -360,7 +372,7 @@ async def main(args):
 
     line_bot_api = AsyncMessagingApi(async_api_client)
     parser = WebhookParser(CHANNEL_SECRET)
-    handler = Handler(line_bot_api, parser)
+    handler = Handler(line_bot_api, parser, debug=args.debug)
 
     app = web.Application()
     app.add_routes([web.post('/callback', handler.__call__)])
@@ -402,6 +414,7 @@ def InitLogger(rootLogger, log_path: str) -> logging.Logger:
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--port', type=int, default=8000)
+    parser.add_argument('--debug', action="store_true")
     return parser.parse_args()
 
 
