@@ -177,7 +177,7 @@ class Handler:
             "Input": input_text,
             "Output": output,
             "User_ID": event.source.user_id,
-            "Creat_Time": event.timestamp
+            "Create_Time": datetime.fromtimestamp(event.timestamp/1000)
         }
         await self.datacol.insert_one(document)
 
