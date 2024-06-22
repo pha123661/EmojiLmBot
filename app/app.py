@@ -58,10 +58,10 @@ class Handler:
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.semaphore = Semaphore(workers)
-        
+
         if debug:
             self.datacol = motor.motor_asyncio.AsyncIOMotorClient(
-            MONGO_CLIENT_STRING)["data_debug"]["data"]
+                MONGO_CLIENT_STRING)["data_debug"]["data"]
             self.usercol = motor.motor_asyncio.AsyncIOMotorClient(
                 MONGO_CLIENT_STRING)["analysis_debug"]["user_status"]
             self.groupcol = motor.motor_asyncio.AsyncIOMotorClient(
@@ -183,6 +183,16 @@ class Handler:
             if last_query_time > self.last_query_time:
                 self.last_query_time = last_query_time
 
+        if len(out_emoji_list):
+            self.line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[
+                        TextMessage(text=output)]
+                )
+            )
+            return
+
         document = {
             "Input": input_text,
             "Output": output,
@@ -246,7 +256,6 @@ class Handler:
             },
             upsert=True
         )
-        await self.update_emoji_count(out_emoji_list)
 
     async def handle_post_back(self, event: PostbackEvent):
         backdata = dict(parse_qsl(event.postback.data))
@@ -283,7 +292,7 @@ async def generate_output(prefix, input_text):
         if len(last_sentence_within_limit) >= 5:
             last_sentence_within_limit = '...' + \
                 last_sentence_within_limit[-5:]
-        return f"太長了啦❗️ 你輸入了{len(text_list)}句 目前限制{sentences_limit}句話 大概到這邊而已：「{last_sentence_within_limit}」"
+        return f"太長了啦❗️ 你輸入了{len(text_list)}句 目前限制{sentences_limit}句話 大概到這邊而已：「{last_sentence_within_limit}」", []
 
     out_emoji_list = []
     for text in text_list:
