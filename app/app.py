@@ -183,7 +183,7 @@ class Handler:
             if last_query_time > self.last_query_time:
                 self.last_query_time = last_query_time
 
-        if len(out_emoji_list):
+        if len(out_emoji_list) == 0:
             self.line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
