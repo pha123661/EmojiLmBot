@@ -184,7 +184,7 @@ class Handler:
                 self.last_query_time = last_query_time
 
         if len(out_emoji_list) == 0:
-            self.line_bot_api.reply_message(
+            await self.line_bot_api.reply_message(
                 ReplyMessageRequest(
                     reply_token=event.reply_token,
                     messages=[
