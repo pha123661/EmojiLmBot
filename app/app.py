@@ -23,11 +23,12 @@ from linebot.v3 import WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
                                   Configuration, ReplyMessageRequest,
-                                  TextMessage, PostbackAction, QuickReply, QuickReplyItem)
+                                  TextMessage, QuickReply, QuickReplyItem,
+                                  ShowLoadingAnimationRequest)
 from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
                                  MessageEvent, TextMessageContent,
                                  UnfollowEvent, PostbackEvent)
-PostbackAction()
+
 CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
 CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 HF_API_TOKEN_LIST = os.getenv('HF_API_TOKEN_LIST', None)
@@ -154,7 +155,7 @@ class Handler:
     async def handle_text_message(self, event: MessageEvent):
         logger.debug(f"Got message: {event.message.text}")
         input_text = event.message.text.strip()
-
+        await self.line_bot_api.show_loading_animation(ShowLoadingAnimationRequest(chatId=event.source.user_id))
         if input_text == f"{self.BOT_NAME}幫幫我":
             logger.info(f"幫幫我 by {event.source.user_id}")
             await self.send_help_message(event)
