@@ -227,7 +227,7 @@ class Handler:
                                                     "type": "postback",
                                                     "label": "爛啦🥲",
                                                     "data": f"action=dislike&feedback_id={feedback_id}",
-                                                    "displayText": "爛啦🥲`",
+                                                    "displayText": "爛啦🥲",
                                                 }
                                             }),
                                         ]
