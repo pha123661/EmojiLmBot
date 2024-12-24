@@ -168,7 +168,7 @@ class Handler:
                 upsert=True
             )
             return
-        if input_text.startswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
+        if input_text.startswith(f"@{self.BOT_NAME}") or input_text.startswith(f"＠{self.BOT_NAME}"):
             input_text = input_text[len(f"@{self.BOT_NAME}"):]
         elif input_text.endswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
             input_text = input_text[:-len(f"@{self.BOT_NAME}")]
