@@ -282,7 +282,7 @@ class Handler:
 
 
 async def generate_output(prefix, input_text):
-    sentences_limit = 35
+    sentences_limit = 99
 
     text_list, delimiter_list = preprocess_input_text(input_text)
     logger.debug(f"Text list length: {len(text_list)}")
