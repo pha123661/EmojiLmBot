@@ -208,6 +208,7 @@ class Handler:
             feedback_id = feedback.inserted_id
 
         except:
+            logging.exception("Dead MongoDB")
             feedback_id = None
 
         def construct_quick_reply(feedback_id):
