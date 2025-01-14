@@ -242,7 +242,7 @@ class Handler:
                 messages=[
                     TextMessage(
                         text=output,
-                        quickReply=None if feedback_id is None else 
+                        quickReply=None if feedback_id is None else construct_quick_reply(feedback_id)
                     )
                 ]
             )
