@@ -1,0 +1,20 @@
+services:
+  bot:
+    image: pha123661/emoji-lm-line-bot
+    container_name: emoji-lm-line-bot
+    ports:
+      - "8000:8000"
+    env_file:
+      - ~/bots/EmojiLmBot/.env
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok-bot
+    command:
+      - "http"
+      - "http://bot:8000"
+      - "--log=stdout"
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    ports:
+      - "4040:4040"  # Optional: Access the ngrok web interface
