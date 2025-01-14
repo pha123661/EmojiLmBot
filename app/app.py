@@ -200,16 +200,18 @@ class Handler:
             "User_ID": event.source.user_id,
             "Create_Time": datetime.fromtimestamp(event.timestamp/1000)
         }
-        await self.datacol.insert_one(document)
 
-        feedback = await self.fbcol.insert_one(document)
-        feedback_id = feedback.inserted_id
-        await self.line_bot_api.reply_message(
-            ReplyMessageRequest(
-                reply_token=event.reply_token,
-                messages=[
-                    TextMessage(text=output,
-                                quickReply=QuickReply.from_dict(
+        try:
+            await self.datacol.insert_one(document)
+
+            feedback = await self.fbcol.insert_one(document)
+            feedback_id = feedback.inserted_id
+
+        except:
+            feedback_id = None
+
+        def construct_quick_reply(feedback_id):
+            return QuickReply.from_dict(
                                     {
                                         "items": [
                                             QuickReplyItem.from_dict({
@@ -231,8 +233,17 @@ class Handler:
                                                 }
                                             }),
                                         ]
-                                    })
-                                )
+                                    }
+                    )
+
+        await self.line_bot_api.reply_message(
+            ReplyMessageRequest(
+                reply_token=event.reply_token,
+                messages=[
+                    TextMessage(
+                        text=output,
+                        quickReply=None if feedback_id is None else 
+                    )
                 ]
             )
         )
