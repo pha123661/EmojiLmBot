@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - ~/bots/EmojiLmBot/.env
+      - .env
 
   ngrok:
     image: ngrok/ngrok:latest
