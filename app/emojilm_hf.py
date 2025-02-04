@@ -42,10 +42,10 @@ class EmojiLmHf:
         asyncio.create_task(self.keep_serverless_api_alive())
 
     def update_hf_api_token(self):
-        next_idx = (self.api_idx + 1) % len(self.hf_api_token_list)
-        logger.info(f"Use HF API token {next_idx}")
+        self.api_idx = (self.api_idx + 1) % len(self.hf_api_token_list)
+        logger.info(f"Use HF API token {self.api_idx}")
         self.api_header = {
-            "Authorization": f"Bearer {self.hf_api_token_list[next_idx]}"}
+            "Authorization": f"Bearer {self.hf_api_token_list[self.api_idx]}"}
 
     async def keep_serverless_api_alive(self):
         async def ping_serverless_api():
