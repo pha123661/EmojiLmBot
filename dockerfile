@@ -14,13 +14,13 @@ RUN apt-get update && \
 FROM python:3.8-slim-buster
 WORKDIR /app
 
-RUN python -m nltk.downloader punkt_tab
-
 COPY --from=builder /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
 COPY --from=builder /app/lid.176.ftz /app/lid.176.ftz
 COPY --from=builder /app/requirements.txt /app/requirements.txt
 
 COPY ./app/*.py /app
+
+RUN python -m nltk.downloader punkt_tab
 
 EXPOSE 8000
 
