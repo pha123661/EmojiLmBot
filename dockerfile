@@ -7,7 +7,6 @@ COPY requirements.txt /app/requirements.txt
 RUN apt-get update && \
     apt-get install --no-install-recommends --yes build-essential wget && \
     pip install --no-cache-dir -r requirements.txt && \
-    python -m nltk.downloader punkt_tab && \
     wget https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.ftz -O lid.176.ftz && \
     rm -rf /var/lib/apt/lists/*
 
@@ -15,14 +14,12 @@ RUN apt-get update && \
 FROM python:3.8-slim-buster
 WORKDIR /app
 
-# Copy installed Python packages (from the builder)
+RUN python -m nltk.downloader punkt_tab
+
 COPY --from=builder /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
-# Copy downloaded file
 COPY --from=builder /app/lid.176.ftz /app/lid.176.ftz
-# Copy requirements if needed for reference (or omit if not necessary)
 COPY --from=builder /app/requirements.txt /app/requirements.txt
 
-# Copy application source code
 COPY ./app/*.py /app
 
 EXPOSE 8000
