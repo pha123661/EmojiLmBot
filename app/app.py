@@ -12,6 +12,7 @@ import pymongo
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from bson import ObjectId
+from command_parser import CommandParser
 from emojilm_hf import EmojiLmHf
 from linebot.v3 import WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
@@ -27,8 +28,6 @@ logger = logging.getLogger()
 
 
 class Handler:
-    BOT_NAME = "哈哈狗"
-
     def __init__(self,
                  line_bot_api: AsyncMessagingApi,
                  parser: WebhookParser,
@@ -42,6 +41,7 @@ class Handler:
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.emojilm = emojilm
+        self.command_parser = CommandParser(keywords=["@哈哈狗", "＠哈哈狗", "@餵狗", "＠餵狗"])
 
         client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
 
@@ -114,7 +114,7 @@ class Handler:
             ReplyMessageRequest(
                 reply_token=event.reply_token,
                 messages=[TextMessage(
-                    text=f"在訊息前或後+上 @{self.BOT_NAME} 就會幫你+emoji\nEX: @哈哈狗 那你很厲害誒")]
+                    text=f"在訊息前或後+上 @哈哈狗 就會幫你+emoji\nEX: @哈哈狗 那你很厲害誒")]
             )
         )
 
@@ -127,7 +127,7 @@ class Handler:
                 chatId=event.source.user_id, loadingSeconds=60)
         )
 
-        if input_text == f"{self.BOT_NAME}幫幫我":
+        if input_text == "哈哈狗幫幫我":
             logger.info(f"幫幫我 by {event.source.user_id}")
             await self.send_help_message(event)
             await self.usercol.find_one_and_update(
@@ -139,12 +139,15 @@ class Handler:
                 upsert=True
             )
             return
-        if input_text.startswith(f"@{self.BOT_NAME}") or input_text.startswith(f"＠{self.BOT_NAME}"):
-            input_text = input_text[len(f"@{self.BOT_NAME}"):]
-        elif input_text.endswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
-            input_text = input_text[:-len(f"@{self.BOT_NAME}")]
-        else:
+        input_text = self.command_parser.startswith_or_endswith_keyword(input_text)
+        if input_text is None:
             return
+        # if input_text.startswith(f"@{self.BOT_NAME}") or input_text.startswith(f"＠{self.BOT_NAME}"):
+        #     input_text = input_text[len(f"@{self.BOT_NAME}"):]
+        # elif input_text.endswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
+        #     input_text = input_text[:-len(f"@{self.BOT_NAME}")]
+        # else:
+        #     return
 
         try:
             output_text_with_emoji, output_emoji_set = await self.emojilm.generate(input_text)
@@ -268,10 +271,10 @@ def construct_quick_reply(feedback_id):
 
 
 async def main(args):
-    InitLogger(logger, 'app.log')
+    InitLogger(logger, 'app.log', level=logging.DEBUG if args.debug else logging.INFO)
 
     if args.debug:
-        logger.info("Running in debug mode")
+        logger.debug("Running in debug mode")
         CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET_DEBUG', None)
         CHANNEL_ACCESS_TOKEN = os.getenv(
             'LINE_CHANNEL_ACCESS_TOKEN_DEBUG', None)
@@ -316,11 +319,11 @@ async def main(args):
         await emojilm.close()
 
 
-def InitLogger(rootLogger, log_path: str) -> logging.Logger:
+def InitLogger(rootLogger, log_path: str, level: int) -> logging.Logger:
     logFormatter = logging.Formatter(
-        "[!log] %(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
+        "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
 
-    rootLogger.setLevel(logging.INFO)
+    rootLogger.setLevel(level)
 
     fileHandler = logging.FileHandler(log_path, encoding='utf8')
     fileHandler.setFormatter(logFormatter)
