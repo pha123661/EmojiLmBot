@@ -18,3 +18,18 @@ services:
       - "http"
       - "http://bot:8000"
       - "--log=stdout"
+
+  llama-cpp-server:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: emojilm-llama-cpp-server
+    volumes:
+      - ./llama-cpp-server:/models
+    environment:
+      - LLAMA_ARG_HOST=0.0.0.0
+      - LLAMA_ARG_PORT=7777
+      - LLAMA_ARG_MODEL=${LLAMA_ARG_MODEL}
+      - LLAMA_ARG_CHAT_TEMPLATE_FILE=${LLAMA_ARG_CHAT_TEMPLATE_FILE}
+      - LLAMA_ARG_N_PREDICT=${LLAMA_ARG_N_PREDICT}
+
+    command: >
+      --jinja
