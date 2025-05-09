@@ -14,7 +14,7 @@ from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from bson import ObjectId
 from emojilm_openai import EmojiLmOpenAi
-from linebot.v3 import WebhookParser
+from linebot.v3 import WebhookParser, messaging
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
                                   Configuration, QuickReply, QuickReplyItem,
@@ -98,6 +98,15 @@ class Handler:
                     )
                 except pymongo.errors.ServerSelectionTimeoutError:
                     pass
+                except messaging.exceptions.ApiException:
+                    logger.warning("API Exception")
+                    await self.line_bot_api.reply_message(
+                        ReplyMessageRequest(
+                            reply_token=event.reply_token,
+                            messages=[
+                                TextMessage(text="爛 Line 不給傳啦 可能太長了 sorry la 稍後再試")]
+                        )
+                    )
                 except Exception as e:
                     logger.exception(e)
                     await self.line_bot_api.reply_message(
@@ -170,13 +179,6 @@ class Handler:
                 )
             )
             return
-
-        # Truncate reply sentence if too long (>4000)
-        # Line calculation of length is different from python, using 4500 as threshold
-        truncation_hint = "... (太長了啦 Line限制5000字)"
-        if len(output_text_with_emoji) >= 4500 - len(truncation_hint):
-            logger.warning(f"Output too long: {len(output_text_with_emoji)}, starting with {output_text_with_emoji[:50]}...")
-            output_text_with_emoji = output_text_with_emoji[:4500 - len(truncation_hint)] + truncation_hint
 
         if len(output_emoji_set) == 0:
             await self.line_bot_api.reply_message(
