@@ -93,7 +93,7 @@ class Handler:
                         ReplyMessageRequest(
                             reply_token=event.reply_token,
                             messages=[
-                                TextMessage(text="卡住了不知道是怎樣 去噴作者 sorry la 稍後再試")]
+                                TextMessage(text="太多人用卡住了啦 去噴作者 sorry la 稍後再試")]
                         )
                     )
                 except pymongo.errors.ServerSelectionTimeoutError:
@@ -146,6 +146,16 @@ class Handler:
         elif input_text.endswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
             input_text = input_text[:-len(f"@{self.BOT_NAME}")]
         else:
+            return
+
+        if len(input_text) == 0:
+            await self.line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[
+                        TextMessage(text="請給我一點文字啦 EX: @哈哈狗 那你很厲害誒")]
+                )
+            )
             return
 
         try:
@@ -298,7 +308,7 @@ async def main(args):
     # emojilm = EmojiLmHf(hf_api_token_list=HF_API_TOKEN)
     emojilm = await EmojiLmOpenAi.create(
         OPENAI_API_URL=OPENAI_API_URL   ,
-        OPENAI_API_KEY="no_key_reqruied",
+        OPENAI_API_KEY="no_key_required",
         concurrency=8,
         sentence_limit=500
     )

@@ -32,7 +32,7 @@ class EmojiLmOpenAi:
         OPENAI_API_URL,
         OPENAI_API_KEY,
         concurrency=8,
-        sentence_limit=500
+        sentence_limit=300
     ):
         aio_session = aiohttp.ClientSession()
         model_id = await cls._get_model_id(aio_session, OPENAI_API_URL, OPENAI_API_KEY)
@@ -96,9 +96,9 @@ class EmojiLmOpenAi:
             "model": self.model_id,
             "prompt": input_text,
             "max_tokens": 5,
-            "temperature": 0.7,
-            "frequency_penalty": 1.4,
-            "top_p": 0.9,
+            "temperature": 0.3,
+            "frequency_penalty": 1.1,
+            "top_p": 0.7,
             "stop": ["\n", "\t", " ", '.'],
         }
 
