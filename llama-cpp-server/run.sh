@@ -1,0 +1,2 @@
+# See https://github.com/ggml-org/llama.cpp/tree/master/tools/server for all options
+docker run -v ./llama-cpp-server:/models -p 7777:7777 ghcr.io/ggml-org/llama.cpp:server -m /models/emojilm-0.6b-f16.gguf --port 7777 --host 0.0.0.0 -n 5 --jinja --chat-template-file /models/only_last_message.jinja;

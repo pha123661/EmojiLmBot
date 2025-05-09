@@ -29,4 +29,4 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: pha123661/emoji-lm-line-bot:latest
+          tags: pha123661/emojilm-linebot:latest

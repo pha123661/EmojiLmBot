@@ -1,5 +1,5 @@
 # Builder stage: install dependencies and download resources
-FROM python:3.8-slim-buster AS builder
+FROM python:3.10-slim AS builder
 WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
@@ -11,17 +11,15 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Final stage: copy only what is needed
-FROM python:3.8-slim-buster
+FROM python:3.10-slim
 WORKDIR /app
 
-COPY --from=builder /usr/local/lib/python3.8/site-packages /usr/local/lib/python3.8/site-packages
+COPY --from=builder /usr/local/lib/python3.10/site-packages /usr/local/lib/python3.10/site-packages
 COPY --from=builder /app/lid.176.ftz /app/lid.176.ftz
 COPY --from=builder /app/requirements.txt /app/requirements.txt
 
-COPY ./app/*.py /app
-
 RUN python -m nltk.downloader punkt_tab
 
-EXPOSE 8000
+COPY ./app/*.py /app
 
-CMD ["python", "app.py"]
+ENTRYPOINT ["python", "app.py"]

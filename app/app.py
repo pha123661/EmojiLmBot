@@ -5,6 +5,7 @@ import os
 import sys
 from argparse import ArgumentParser
 from datetime import datetime
+from typing import Protocol
 from urllib.parse import parse_qsl
 
 import motor.motor_asyncio
@@ -12,7 +13,7 @@ import pymongo
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from bson import ObjectId
-from emojilm_hf import EmojiLmHf
+from emojilm_openai import EmojiLmOpenAi
 from linebot.v3 import WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
@@ -26,19 +27,20 @@ from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
 logger = logging.getLogger()
 
 
+class EmojiLm(Protocol):
+    async def generate(self, input_text) -> tuple[str, set[str]]:
+        ...
+
+
 class Handler:
     BOT_NAME = "哈哈狗"
 
     def __init__(self,
                  line_bot_api: AsyncMessagingApi,
                  parser: WebhookParser,
-                 emojilm: EmojiLmHf,
+                 emojilm: EmojiLm,
                  mongo_uri: str,
                  use_debug_db: bool = False):
-        '''
-        :param workers: Number of workers to limit the number of concurrent queries
-        :param keep_alive_interval: Interval to query the serverless API to keep it alive (seconds)
-        '''
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.emojilm = emojilm
@@ -91,7 +93,7 @@ class Handler:
                         ReplyMessageRequest(
                             reply_token=event.reply_token,
                             messages=[
-                                TextMessage(text="卡住了不知道是怎樣 去噴作者 sorry la 稍後再試")]
+                                TextMessage(text="太多人用卡住了啦 去噴作者 sorry la 稍後再試")]
                         )
                     )
                 except pymongo.errors.ServerSelectionTimeoutError:
@@ -144,6 +146,16 @@ class Handler:
         elif input_text.endswith(f"@{self.BOT_NAME}") or input_text.endswith(f"＠{self.BOT_NAME}"):
             input_text = input_text[:-len(f"@{self.BOT_NAME}")]
         else:
+            return
+
+        if len(input_text) == 0:
+            await self.line_bot_api.reply_message(
+                ReplyMessageRequest(
+                    reply_token=event.reply_token,
+                    messages=[
+                        TextMessage(text="請給我一點文字啦 EX: @哈哈狗 那你很厲害誒")]
+                )
+            )
             return
 
         try:
@@ -278,17 +290,28 @@ async def main(args):
 
     MONGO_CLIENT_URI = os.getenv('MONGO_CLIENT', None)
     HF_API_TOKEN = os.getenv('HF_API_TOKEN_LIST', "").split(' ')
+    OPENAI_API_URL = os.getenv('LLAMA_CPP_SERVER_URL', None)
 
-    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or len(HF_API_TOKEN) == 0:
+    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None:
         print(
-            "Please set LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN and HF_API_TOKEN environment variables.")
+            "Please set LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN.")
+        sys.exit(1)
+
+    if len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None:
+        print("Please set HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL.")
         sys.exit(1)
 
     configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
     async_api_client = AsyncApiClient(configuration)
     line_bot_api = AsyncMessagingApi(async_api_client)
     parser = WebhookParser(CHANNEL_SECRET)
-    emojilm = EmojiLmHf(hf_api_token_list=HF_API_TOKEN)
+    # emojilm = EmojiLmHf(hf_api_token_list=HF_API_TOKEN)
+    emojilm = await EmojiLmOpenAi.create(
+        OPENAI_API_URL=OPENAI_API_URL   ,
+        OPENAI_API_KEY="no_key_required",
+        concurrency=8,
+        sentence_limit=500
+    )
 
     handler = Handler(line_bot_api, parser, emojilm,
                       MONGO_CLIENT_URI, use_debug_db=args.debug)
@@ -315,7 +338,7 @@ async def main(args):
 
 def InitLogger(rootLogger, log_path: str) -> logging.Logger:
     logFormatter = logging.Formatter(
-        "[!log] %(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
+        "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
 
     rootLogger.setLevel(logging.INFO)
 
@@ -332,13 +355,14 @@ def InitLogger(rootLogger, log_path: str) -> logging.Logger:
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--port', type=int, default=8000)
+    parser.add_argument('--port', type=int, default=7778)
     parser.add_argument('--debug', action="store_true")
 
     args = parser.parse_args()
     if os.getenv('DEBUG', '0').lower() in ('true', '1', 't'):
         args.debug = True
     return args
+
 
 if __name__ == "__main__":
     args = parse_args()

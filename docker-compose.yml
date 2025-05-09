@@ -1,20 +1,42 @@
 services:
   bot:
-    image: pha123661/emoji-lm-line-bot
-    container_name: emoji-lm-line-bot
+    image: pha123661/emojilm-linebot:latest
+    container_name: emojilm-linebot
     environment:
       - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
       - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
       - HF_API_TOKEN_LIST=${HF_API_TOKEN_LIST}
+      - LLAMA_CPP_SERVER_URL=http://llama-cpp-server:7777
     ports:
-      - "8000:8000" # Not necessary since we use ngrok
+      - "7778:7778" # Not necessary since we use ngrok
+    command: >
+      --port 7778
 
   ngrok:
     image: ngrok/ngrok:latest
+    depends_on:
+      - bot
+      - llama-cpp-server
     container_name: emojilm-ngrok
     environment:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     command:
       - "http"
-      - "http://bot:8000"
+      - "http://bot:7778"
       - "--log=stdout"
+
+  llama-cpp-server:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    container_name: emojilm-llama-cpp-server
+    volumes:
+      - ./llama-cpp-server:/models
+    environment:
+      - LLAMA_ARG_HOST=0.0.0.0
+      - LLAMA_ARG_PORT=7777
+      - LLAMA_ARG_MODEL=${LLAMA_ARG_MODEL}
+      - LLAMA_ARG_CHAT_TEMPLATE_FILE=${LLAMA_ARG_CHAT_TEMPLATE_FILE}
+      - LLAMA_ARG_N_PREDICT=${LLAMA_ARG_N_PREDICT}
+      - LLAMA_ARG_N_PARALLEL=${LLAMA_ARG_N_PARALLEL}
+
+    command: >
+      --jinja
