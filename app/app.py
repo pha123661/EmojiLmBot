@@ -5,6 +5,7 @@ import os
 import sys
 from argparse import ArgumentParser
 from datetime import datetime
+from typing import Protocol
 from urllib.parse import parse_qsl
 
 import motor.motor_asyncio
@@ -12,7 +13,7 @@ import pymongo
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
 from bson import ObjectId
-from emojilm_hf import EmojiLmHf
+from emojilm_openai import EmojiLmOpenAi
 from linebot.v3 import WebhookParser
 from linebot.v3.exceptions import InvalidSignatureError
 from linebot.v3.messaging import (AsyncApiClient, AsyncMessagingApi,
@@ -26,19 +27,20 @@ from linebot.v3.webhooks import (FollowEvent, JoinEvent, LeaveEvent,
 logger = logging.getLogger()
 
 
+class EmojiLm(Protocol):
+    async def generate(self, input_text) -> tuple[str, set[str]]:
+        ...
+
+
 class Handler:
     BOT_NAME = "哈哈狗"
 
     def __init__(self,
                  line_bot_api: AsyncMessagingApi,
                  parser: WebhookParser,
-                 emojilm: EmojiLmHf,
+                 emojilm: EmojiLm,
                  mongo_uri: str,
                  use_debug_db: bool = False):
-        '''
-        :param workers: Number of workers to limit the number of concurrent queries
-        :param keep_alive_interval: Interval to query the serverless API to keep it alive (seconds)
-        '''
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.emojilm = emojilm
@@ -278,17 +280,28 @@ async def main(args):
 
     MONGO_CLIENT_URI = os.getenv('MONGO_CLIENT', None)
     HF_API_TOKEN = os.getenv('HF_API_TOKEN_LIST', "").split(' ')
+    OPENAI_API_URL = os.getenv('LLAMA_CPP_SERVER_URL', None)
 
-    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or len(HF_API_TOKEN) == 0:
+    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None:
         print(
-            "Please set LINE_CHANNEL_SECRET, LINE_CHANNEL_ACCESS_TOKEN and HF_API_TOKEN environment variables.")
+            "Please set LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN.")
+        sys.exit(1)
+
+    if len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None:
+        print("Please set HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL.")
         sys.exit(1)
 
     configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
     async_api_client = AsyncApiClient(configuration)
     line_bot_api = AsyncMessagingApi(async_api_client)
     parser = WebhookParser(CHANNEL_SECRET)
-    emojilm = EmojiLmHf(hf_api_token_list=HF_API_TOKEN)
+    # emojilm = EmojiLmHf(hf_api_token_list=HF_API_TOKEN)
+    emojilm = await EmojiLmOpenAi.create(
+        OPENAI_API_URL=OPENAI_API_URL   ,
+        OPENAI_API_KEY="no_key_reqruied",
+        concurrency=8,
+        sentence_limit=500
+    )
 
     handler = Handler(line_bot_api, parser, emojilm,
                       MONGO_CLIENT_URI, use_debug_db=args.debug)
@@ -339,6 +352,7 @@ def parse_args():
     if os.getenv('DEBUG', '0').lower() in ('true', '1', 't'):
         args.debug = True
     return args
+
 
 if __name__ == "__main__":
     args = parse_args()
