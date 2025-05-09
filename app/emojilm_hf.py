@@ -1,3 +1,8 @@
+'''
+This module is not deprecated due to policy changes of huggingface inference API. (I.e., no more free API)
+This module is used to generate emojis using the huggingface inference API.
+'''
+
 import asyncio
 import itertools
 import logging
@@ -14,7 +19,6 @@ from async_lru import alru_cache
 
 logger = logging.getLogger()
 language_model = fasttext.load_model("lid.176.ftz")
-
 
 class EmojiLmHf:
     KEEP_ALIVE_STR = "👋"

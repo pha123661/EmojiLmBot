@@ -6,8 +6,11 @@ services:
       - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
       - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
       - HF_API_TOKEN_LIST=${HF_API_TOKEN_LIST}
+      - LLAMA_CPP_SERVER_URL=http://llama-cpp-server:7777
     ports:
-      - "8000:8000" # Not necessary since we use ngrok
+      - "7778:7778" # Not necessary since we use ngrok
+    command: >
+      --port 7778
 
   ngrok:
     image: ngrok/ngrok:latest
@@ -16,7 +19,7 @@ services:
       NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     command:
       - "http"
-      - "http://bot:8000"
+      - "http://bot:7778"
       - "--log=stdout"
 
   llama-cpp-server:

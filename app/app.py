@@ -315,7 +315,7 @@ async def main(args):
 
 def InitLogger(rootLogger, log_path: str) -> logging.Logger:
     logFormatter = logging.Formatter(
-        "[!log] %(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
+        "%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s] [%(module)-16s:%(lineno)-4s] %(message)s")
 
     rootLogger.setLevel(logging.INFO)
 
@@ -332,7 +332,7 @@ def InitLogger(rootLogger, log_path: str) -> logging.Logger:
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--port', type=int, default=8000)
+    parser.add_argument('--port', type=int, default=7778)
     parser.add_argument('--debug', action="store_true")
 
     args = parser.parse_args()
