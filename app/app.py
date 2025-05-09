@@ -301,13 +301,9 @@ async def main(args):
     HF_API_TOKEN = os.getenv('HF_API_TOKEN_LIST', "").split(' ')
     OPENAI_API_URL = os.getenv('LLAMA_CPP_SERVER_URL', None)
 
-    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None:
+    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or (len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None):
         print(
-            "Please set LINE_CHANNEL_SECRET and LINE_CHANNEL_ACCESS_TOKEN.")
-        sys.exit(1)
-
-    if len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None:
-        print("Please set HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL.")
+            "Please set LINE_CHANNEL_* and HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL.")
         sys.exit(1)
 
     configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
@@ -316,10 +312,10 @@ async def main(args):
     parser = WebhookParser(CHANNEL_SECRET)
     # emojilm = EmojiLmHf(hf_api_token_list=HF_API_TOKEN)
     emojilm = await EmojiLmOpenAi.create(
-        OPENAI_API_URL=OPENAI_API_URL   ,
+        OPENAI_API_URL=OPENAI_API_URL,
         OPENAI_API_KEY="no_key_required",
-        concurrency=8,
-        sentence_limit=500
+        concurrency=32,
+        sentence_limit=100,
     )
 
     handler = Handler(line_bot_api, parser, emojilm,
@@ -378,5 +374,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main(args))
     except KeyboardInterrupt:
-        logger.info("Server stopped.")
         logger.info("Server stopped.")

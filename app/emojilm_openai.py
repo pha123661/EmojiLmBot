@@ -31,8 +31,8 @@ class EmojiLmOpenAi:
         cls,
         OPENAI_API_URL,
         OPENAI_API_KEY,
-        concurrency=8,
-        sentence_limit=300
+        concurrency,
+        sentence_limit,
     ):
         aio_session = aiohttp.ClientSession()
         model_id = await cls._get_model_id(aio_session, OPENAI_API_URL, OPENAI_API_KEY)
