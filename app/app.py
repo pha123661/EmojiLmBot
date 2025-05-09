@@ -171,10 +171,12 @@ class Handler:
             )
             return
 
-        # Truncate reply sentence if too long (>5000)
+        # Truncate reply sentence if too long (>4000)
+        # Line calculation of length is different from python, using 4500 as threshold
         truncation_hint = "... (太長了啦 Line限制5000字)"
-        if len(output_text_with_emoji) >= 5000 - len(truncation_hint):
-            output_text_with_emoji = output_text_with_emoji[:5000 - len(truncation_hint)] + truncation_hint
+        if len(output_text_with_emoji) >= 4500 - len(truncation_hint):
+            logger.warning(f"Output too long: {len(output_text_with_emoji)}, starting with {output_text_with_emoji[:50]}...")
+            output_text_with_emoji = output_text_with_emoji[:4500 - len(truncation_hint)] + truncation_hint
 
         if len(output_emoji_set) == 0:
             await self.line_bot_api.reply_message(
@@ -374,4 +376,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(main(args))
     except KeyboardInterrupt:
+        logger.info("Server stopped.")
         logger.info("Server stopped.")
