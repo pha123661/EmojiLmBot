@@ -171,6 +171,11 @@ class Handler:
             )
             return
 
+        # Truncate reply sentence if too long (>5000)
+        truncation_hint = "... (太長了啦 Line限制5000字)"
+        if len(output_text_with_emoji) >= 5000 - len(truncation_hint):
+            output_text_with_emoji = output_text_with_emoji[:5000 - len(truncation_hint)] + truncation_hint
+
         if len(output_emoji_set) == 0:
             await self.line_bot_api.reply_message(
                 ReplyMessageRequest(
