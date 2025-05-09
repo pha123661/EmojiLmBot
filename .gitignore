@@ -1,9 +1,7 @@
 .venv
 **tmp**
 __pycache__
-.env
 app.log
 *.ftz
 *.gguf
-.env
-.env.debug
+.env*
