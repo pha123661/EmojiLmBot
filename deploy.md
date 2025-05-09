@@ -1,5 +1,14 @@
 ## How to deploy the app
 
+### Prerequisites
+
+1. Download gguf weights from [Hugging Face](https://huggingface.co/liswei/emojilm-0.6b-GGUF)
+```bash
+bash llama-cpp-server/download_gguf.sh
+```
+
+### Laucnh the app
+
 1. create a `.env.prod` file (or whatever the name is) in the root directory of the project and add the following environment variables:
 ```bash
 LINE_CHANNEL_ACCESS_TOKEN=your_line_channel_access_token
@@ -14,3 +23,9 @@ docker compose --env-file=.env.config --env-file=.env.prod up -d && sleep 1 && d
 ```
 
 3. copy the ngrok url and set the webhook url in your LINE developer console to `https://your_ngrok_url/callback`. (make sure to append `/callback` to the ngrok url)
+
+## How do inspect logs?
+
+```bash
+docker compose logs -f
+```
