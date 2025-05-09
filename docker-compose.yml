@@ -2,19 +2,19 @@ services:
   bot:
     image: pha123661/emoji-lm-line-bot
     container_name: emoji-lm-line-bot
+    environment:
+      - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
+      - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
+      - HF_API_TOKEN_LIST=${HF_API_TOKEN_LIST}
     ports:
-      - "8000:8000"
-    env_file:
-      - .env
+      - "8000:8000" # Not necessary since we use ngrok
 
   ngrok:
     image: ngrok/ngrok:latest
-    container_name: ngrok-bot
+    container_name: emojilm-ngrok
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
     command:
       - "http"
       - "http://bot:8000"
       - "--log=stdout"
-    environment:
-      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
-    ports:
-      - "4040:4040"  # Optional: Access the ngrok web interface

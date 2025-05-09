@@ -272,12 +272,9 @@ async def main(args):
 
     if args.debug:
         logger.info("Running in debug mode")
-        CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET_DEBUG', None)
-        CHANNEL_ACCESS_TOKEN = os.getenv(
-            'LINE_CHANNEL_ACCESS_TOKEN_DEBUG', None)
-    else:
-        CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
-        CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
+
+    CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
+    CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 
     MONGO_CLIENT_URI = os.getenv('MONGO_CLIENT', None)
     HF_API_TOKEN = os.getenv('HF_API_TOKEN_LIST', "").split(' ')
@@ -337,8 +334,11 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--port', type=int, default=8000)
     parser.add_argument('--debug', action="store_true")
-    return parser.parse_args()
 
+    args = parser.parse_args()
+    if os.getenv('DEBUG', '0').lower() in ('true', '1', 't'):
+        args.debug = True
+    return args
 
 if __name__ == "__main__":
     args = parse_args()
