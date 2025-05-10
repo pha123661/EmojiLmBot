@@ -301,7 +301,7 @@ async def main(args):
     HF_API_TOKEN = os.getenv('HF_API_TOKEN_LIST', "").split(' ')
     OPENAI_API_URL = os.getenv('LLAMA_CPP_SERVER_URL', None)
 
-    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or (len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None):
+    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or MONGO_CLIENT_URI is None or (len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None):
         print(
             "Please set LINE_CHANNEL_* and HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL.")
         sys.exit(1)
