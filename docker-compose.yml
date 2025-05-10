@@ -5,6 +5,7 @@ services:
     environment:
       - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
       - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
+      - MONGO_CLIENT=${MONGO_CLIENT}
       - HF_API_TOKEN_LIST=${HF_API_TOKEN_LIST}
       - LLAMA_CPP_SERVER_URL=http://llama-cpp-server:7777
     ports:
