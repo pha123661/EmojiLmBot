@@ -1,6 +1,6 @@
 '''
-This module is not deprecated due to policy changes of huggingface inference API. (I.e., no more free API)
-This module is used to generate emojis using the huggingface inference API.
+This module is deprecated due to policy changes of huggingface inference API. (I.e., no more free API)
+This module generates emojis using the huggingface inference API.
 '''
 
 import asyncio
