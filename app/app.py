@@ -8,11 +8,8 @@ from datetime import datetime
 from typing import Protocol
 from urllib.parse import parse_qsl
 
-import motor.motor_asyncio
-import pymongo
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
-from bson import ObjectId
 from emojilm_openai import EmojiLmOpenAi
 from linebot.v3 import WebhookParser, messaging
 from linebot.v3.exceptions import InvalidSignatureError
@@ -35,28 +32,17 @@ class EmojiLm(Protocol):
 class Handler:
     BOT_NAME = "哈哈狗"
 
-    def __init__(self,
-                 line_bot_api: AsyncMessagingApi,
-                 parser: WebhookParser,
-                 emojilm: EmojiLm,
-                 mongo_uri: str,
-                 use_debug_db: bool = False):
+    def __init__(
+        self,
+            line_bot_api: AsyncMessagingApi,
+            parser: WebhookParser,
+            emojilm: EmojiLm,
+            db: 'Database'  # type: ignore[valid-type] --- IGNORE ---,
+    ):
         self.line_bot_api = line_bot_api
         self.parser = parser
         self.emojilm = emojilm
-
-        client = motor.motor_asyncio.AsyncIOMotorClient(mongo_uri)
-
-        if use_debug_db:
-            self.usercol = client["analysis_debug"]["user_status"]
-            self.groupcol = client["analysis_debug"]["group_status"]
-            self.msgcol = client["analysis_debug"]["emoji_status"]
-            self.fbcol = client["data_debug"]["feedback"]
-        else:
-            self.usercol = client["analysis"]["user_status"]
-            self.groupcol = client["analysis"]["group_status"]
-            self.msgcol = client["analysis"]["emoji_status"]
-            self.fbcol = client["data"]["feedback"]
+        self.db = db
 
     async def handle_callback(self, request):
         signature = request.headers['X-Line-Signature']
@@ -72,15 +58,26 @@ class Handler:
             if isinstance(event, JoinEvent):
                 logger.info(f'加入群組 {event.source.group_id}')
                 await self.send_help_message(event)
-                await self.groupcol.find_one_and_update({"_id": event.source.group_id}, {"$set": {"leave": False}, "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}}, upsert=True)
+                await self.db.upsert_group(
+                    group_id=event.source.group_id,
+                    leave=False,
+                    first_use=datetime.fromtimestamp(event.timestamp/1000)
+                )
             elif isinstance(event, FollowEvent):
                 logger.info(f'加入好友 {event.source.user_id}')
             elif isinstance(event, LeaveEvent):
                 logger.warning(f'幹被踢了啦 {event.source.group_id}')
-                await self.groupcol.find_one_and_update({"_id": event.source.group_id}, {"$set": {"leave": True}}, upsert=True)
+                await self.db.upsert_group(
+                    group_id=event.source.group_id,
+                    leave=True
+                )
             elif isinstance(event, UnfollowEvent):
                 logger.warning(f'幹被封鎖了啦 {event.source.user_id}')
-                await self.usercol.find_one_and_update({"_id": event.source.user_id}, {"$set": {"block": True, "last_block": datetime.fromtimestamp(event.timestamp/1000)}}, upsert=True)
+                await self.db.upsert_user(
+                    user_id=event.source.user_id,
+                    block=True,
+                    last_block=datetime.fromtimestamp(event.timestamp/1000)
+                )
             elif isinstance(event, MessageEvent) and isinstance(event.message, TextMessageContent):
                 try:
                     await asyncio.wait_for(
@@ -96,8 +93,6 @@ class Handler:
                                 TextMessage(text="太多人用卡住了啦 去噴作者 sorry la 稍後再試")]
                         )
                     )
-                except pymongo.errors.ServerSelectionTimeoutError:
-                    pass
                 except messaging.exceptions.ApiException:
                     logger.warning("API Exception")
                     await self.line_bot_api.reply_message(
@@ -141,13 +136,10 @@ class Handler:
         if input_text == f"{self.BOT_NAME}幫幫我":
             logger.info(f"幫幫我 by {event.source.user_id}")
             await self.send_help_message(event)
-            await self.usercol.find_one_and_update(
-                {"_id": event.source.user_id},
-                {
-                    "$inc": {"help_count": 1},
-                    "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}
-                },
-                upsert=True
+            await self.db.upsert_user(
+                user_id=event.source.user_id,
+                help_count_inc=1,
+                first_use=datetime.fromtimestamp(event.timestamp/1000)
             )
             return
         if input_text.startswith(f"@{self.BOT_NAME}") or input_text.startswith(f"＠{self.BOT_NAME}"):
@@ -190,20 +182,21 @@ class Handler:
             )
             return
 
-        document = {
-            "Input": input_text,
-            "Output": output_text_with_emoji,
-            "User_ID": event.source.user_id,
-            "Create_Time": datetime.fromtimestamp(event.timestamp/1000)
-        }
-
         try:
-            # Critical database insertion before reply to user -> Thus set timeout to 1 second
-            with pymongo.timeout(1):
-                feedback = await self.fbcol.insert_one(document)
-            feedback_id = feedback.inserted_id
-        except:
-            logging.exception("Dead MongoDB")
+            try:
+                feedback_id = await asyncio.wait_for(
+                    self.db.insert_feedback(
+                        input_text=input_text,
+                        output_text=output_text_with_emoji,
+                        user_id=event.source.user_id,
+                        create_time=datetime.fromtimestamp(event.timestamp/1000)
+                    ),
+                    timeout=1
+                )
+            except asyncio.TimeoutError:
+                feedback_id = None
+        except (Exception, TimeoutError) as e:
+            logging.exception("Database insertion failed")
             feedback_id = None
 
         await self.line_bot_api.reply_message(
@@ -219,30 +212,23 @@ class Handler:
         )
 
         if event.source.type == "group":
-            await self.groupcol.find_one_and_update(
-                {"_id": event.source.group_id},
-                {
-                    "$inc": {"msg_count": 1},
-                    "$set": {"last_use": datetime.fromtimestamp(event.timestamp/1000)},
-                    "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}
-                },
-                upsert=True
+            await self.db.upsert_group(
+                group_id=event.source.group_id,
+                msg_count_inc=1,
+                last_use=datetime.fromtimestamp(event.timestamp/1000)
             )
 
-        await self.usercol.find_one_and_update(
-            {"_id": event.source.user_id},
-            {
-                "$inc": {"msg_count": 1},
-                "$set": {"last_use": datetime.fromtimestamp(event.timestamp/1000)},
-                "$setOnInsert": {"first_use": datetime.fromtimestamp(event.timestamp/1000)}
-            },
-            upsert=True
+        await self.db.upsert_user(
+            user_id=event.source.user_id,
+            msg_count_inc=1,
+            last_use=datetime.fromtimestamp(event.timestamp/1000)
         )
 
     async def handle_post_back(self, event: PostbackEvent):
         backdata = dict(parse_qsl(event.postback.data))
         if backdata.keys() != {'action', 'feedback_id'}:
             raise ValueError("Invalid quickreply!")
+
         if backdata['action'] == "dislike":
             preference_value = -1
         elif backdata['action'] == "like":
@@ -250,8 +236,14 @@ class Handler:
         else:
             raise ValueError("Invalid quickreply!")
 
-        feedback_id = ObjectId(backdata["feedback_id"])
-        await self.fbcol.find_one_and_update({"_id": feedback_id}, {"$set": {"preference": preference_value}})
+        try:
+            feedback_id = int(backdata["feedback_id"])
+        except ValueError:
+            logger.error(
+                f"Invalid feedback_id in postback data: {backdata['feedback_id']}")
+            return
+
+        await self.db.update_feedback_preference(feedback_id, preference_value)
         await self.line_bot_api.reply_message(
             ReplyMessageRequest(
                 reply_token=event.reply_token,
@@ -289,7 +281,7 @@ def construct_quick_reply(feedback_id):
 
 
 async def main(args):
-    InitLogger(logger, 'app.log')
+    InitLogger(logger, '../data/app.log')
 
     if args.debug:
         logger.info("Running in debug mode")
@@ -297,20 +289,29 @@ async def main(args):
     CHANNEL_SECRET = os.getenv('LINE_CHANNEL_SECRET', None)
     CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', None)
 
-    MONGO_CLIENT_URI = os.getenv('MONGO_CLIENT', None)
     HF_API_TOKEN = os.getenv('HF_API_TOKEN_LIST', "").split(' ')
     OPENAI_API_URL = os.getenv('LLAMA_CPP_SERVER_URL', None)
+    DB_DSN = os.getenv('POSTGRES_DSN', None)
 
-    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or MONGO_CLIENT_URI is None or (len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None):
+    if DB_DSN is None:
+        logger.warning("POSTGRES_DSN is not set, using SQLite fallback.")
+        from db_sqlite import Database
+        DB_DSN = "../data/emojilm.db"
+    else:
+        from db_pg import Database
+
+    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or (len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None):
         print(
-            "Please set LINE_CHANNEL_* and HF_API_TOKEN_LIST and MONGO_CLIENT_URI or LLAMA_CPP_SERVER_URL.")
+            "Please set LINE_CHANNEL_* and (HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL).")
         sys.exit(1)
 
     configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
     async_api_client = AsyncApiClient(configuration)
     line_bot_api = AsyncMessagingApi(async_api_client)
     parser = WebhookParser(CHANNEL_SECRET)
-    # emojilm = EmojiLmHf(hf_api_token_list=HF_API_TOKEN)
+
+    db = await Database.create_and_connect(dsn=DB_DSN)
+
     emojilm = await EmojiLmOpenAi.create(
         OPENAI_API_URL=OPENAI_API_URL,
         OPENAI_API_KEY="no_key_required",
@@ -318,8 +319,12 @@ async def main(args):
         sentence_limit=100,
     )
 
-    handler = Handler(line_bot_api, parser, emojilm,
-                      MONGO_CLIENT_URI, use_debug_db=args.debug)
+    handler = Handler(
+        line_bot_api=line_bot_api,
+        parser=parser,
+        emojilm=emojilm,
+        db=db,
+    )
 
     app = web.Application()
     app.add_routes([web.post('/callback', handler.handle_callback)])
@@ -333,8 +338,9 @@ async def main(args):
 
     try:
         while True:
-            await asyncio.sleep(600)  # Keep the server running
+            await asyncio.sleep(600)
     finally:
+        await db.close()
         await site.stop()
         await runner.cleanup()
         await async_api_client.close()
