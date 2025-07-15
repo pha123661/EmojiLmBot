@@ -10,7 +10,6 @@ from urllib.parse import parse_qsl
 
 from aiohttp import web
 from aiohttp.web_runner import TCPSite
-from db import Database
 from emojilm_openai import EmojiLmOpenAi
 from linebot.v3 import WebhookParser, messaging
 from linebot.v3.exceptions import InvalidSignatureError
@@ -38,7 +37,7 @@ class Handler:
             line_bot_api: AsyncMessagingApi,
             parser: WebhookParser,
             emojilm: EmojiLm,
-            db: Database,
+            db: 'Database'  # type: ignore[valid-type] --- IGNORE ---,
     ):
         self.line_bot_api = line_bot_api
         self.parser = parser
@@ -184,13 +183,18 @@ class Handler:
             return
 
         try:
-            async with asyncio.timeout(1):
-                feedback_id = await self.db.insert_feedback(
-                    input_text=input_text,
-                    output_text=output_text_with_emoji,
-                    user_id=event.source.user_id,
-                    create_time=datetime.fromtimestamp(event.timestamp/1000)
+            try:
+                feedback_id = await asyncio.wait_for(
+                    self.db.insert_feedback(
+                        input_text=input_text,
+                        output_text=output_text_with_emoji,
+                        user_id=event.source.user_id,
+                        create_time=datetime.fromtimestamp(event.timestamp/1000)
+                    ),
+                    timeout=1
                 )
+            except asyncio.TimeoutError:
+                feedback_id = None
         except (Exception, TimeoutError) as e:
             logging.exception("Database insertion failed")
             feedback_id = None
@@ -277,7 +281,7 @@ def construct_quick_reply(feedback_id):
 
 
 async def main(args):
-    InitLogger(logger, 'app.log')
+    InitLogger(logger, '../data/app.log')
 
     if args.debug:
         logger.info("Running in debug mode")
@@ -287,11 +291,18 @@ async def main(args):
 
     HF_API_TOKEN = os.getenv('HF_API_TOKEN_LIST', "").split(' ')
     OPENAI_API_URL = os.getenv('LLAMA_CPP_SERVER_URL', None)
-    POSTGRES_DSN = os.getenv('POSTGRES_DSN', None)
+    DB_DSN = os.getenv('POSTGRES_DSN', None)
 
-    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or (len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None) or POSTGRES_DSN is None:
+    if DB_DSN is None:
+        logger.warning("POSTGRES_DSN is not set, using SQLite fallback.")
+        from db_sqlite import Database
+        DB_DSN = "../data/emojilm.db"
+    else:
+        from db_pg import Database
+
+    if CHANNEL_SECRET is None or CHANNEL_ACCESS_TOKEN is None or (len(HF_API_TOKEN) == 0 and OPENAI_API_URL is None):
         print(
-            "Please set LINE_CHANNEL_*, HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL, and POSTGRES_DSN.")
+            "Please set LINE_CHANNEL_* and (HF_API_TOKEN_LIST or LLAMA_CPP_SERVER_URL).")
         sys.exit(1)
 
     configuration = Configuration(access_token=CHANNEL_ACCESS_TOKEN)
@@ -299,7 +310,7 @@ async def main(args):
     line_bot_api = AsyncMessagingApi(async_api_client)
     parser = WebhookParser(CHANNEL_SECRET)
 
-    db = await Database.create_and_connect(dsn=POSTGRES_DSN)
+    db = await Database.create_and_connect(dsn=DB_DSN)
 
     emojilm = await EmojiLmOpenAi.create(
         OPENAI_API_URL=OPENAI_API_URL,

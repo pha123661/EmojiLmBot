@@ -1,8 +1,8 @@
 .venv
 **tmp**
 __pycache__
-app.log
 *.ftz
 *.gguf
 .env*
 .nfs*
+data

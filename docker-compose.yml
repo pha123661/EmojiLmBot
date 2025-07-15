@@ -2,6 +2,8 @@ services:
   bot:
     image: pha123661/emojilm-linebot:latest
     container_name: emojilm-linebot
+    volumes:
+      - ./data:/data
     environment:
       - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
       - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
